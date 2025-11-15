@@ -109,12 +109,9 @@ class ContactMonitorService {
         this.knownContactIds = new Set(JSON.parse(stored));
         console.log(`📂 Loaded ${this.knownContactIds.size} known contacts from storage`);
       } else {
-        // First time - load all current contacts to establish baseline
-        console.log('📂 No stored contacts found - establishing baseline...');
-        const contacts = await Contacts.getAll();
-        this.knownContactIds = new Set(contacts.map(c => c.recordID));
-        await this.saveKnownContacts();
-        console.log(`📂 Initialized with ${this.knownContactIds.size} existing contacts (no notifications will be sent)`);
+        // First time - start fresh, only track NEW contacts from now on
+        console.log('📂 Starting fresh - will only track contacts added from now on');
+        this.knownContactIds = new Set();
       }
     } catch (error) {
       console.error('Failed to load known contacts:', error);
