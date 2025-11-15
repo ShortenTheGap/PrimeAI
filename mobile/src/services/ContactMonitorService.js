@@ -10,11 +10,15 @@ class ContactMonitorService {
     this.isMonitoring = false;
     this.knownContactIds = new Set();
     this.checkInterval = null;
+    this.isInitializing = false; // Flag to prevent notifications during initial load
   }
 
   // Initialize the service
   async initialize() {
     try {
+      // Set flag to prevent notifications during initial load
+      this.isInitializing = true;
+
       // Request permissions
       await this.requestPermissions();
 
@@ -27,9 +31,17 @@ class ContactMonitorService {
       // Start monitoring
       await this.startMonitoring();
 
-      console.log('Contact monitoring service initialized');
+      // Clear initializing flag after first check cycle
+      // This allows the first interval check to complete silently
+      setTimeout(() => {
+        this.isInitializing = false;
+        console.log('✅ Initialization complete - now monitoring for new contacts');
+      }, 6000); // Wait for first check cycle (5 sec interval + buffer)
+
+      console.log('📱 Contact monitoring service initialized');
     } catch (error) {
       console.error('Failed to initialize contact monitor:', error);
+      this.isInitializing = false; // Clear flag on error
     }
   }
 
@@ -95,11 +107,14 @@ class ContactMonitorService {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         this.knownContactIds = new Set(JSON.parse(stored));
+        console.log(`📂 Loaded ${this.knownContactIds.size} known contacts from storage`);
       } else {
-        // First time - load all current contacts
+        // First time - load all current contacts to establish baseline
+        console.log('📂 No stored contacts found - establishing baseline...');
         const contacts = await Contacts.getAll();
         this.knownContactIds = new Set(contacts.map(c => c.recordID));
         await this.saveKnownContacts();
+        console.log(`📂 Initialized with ${this.knownContactIds.size} existing contacts (no notifications will be sent)`);
       }
     } catch (error) {
       console.error('Failed to load known contacts:', error);
@@ -164,9 +179,14 @@ class ContactMonitorService {
         // Save updated known contacts
         await this.saveKnownContacts();
 
-        // Trigger notification for each new contact
-        for (const contact of newContacts) {
-          this.triggerContextCaptureNotification(contact);
+        // Only trigger notifications if NOT initializing
+        if (!this.isInitializing) {
+          // Trigger notification for each new contact
+          for (const contact of newContacts) {
+            this.triggerContextCaptureNotification(contact);
+          }
+        } else {
+          console.log('📂 Skipping notifications during initial load (found during initialization)');
         }
       }
     } catch (error) {
