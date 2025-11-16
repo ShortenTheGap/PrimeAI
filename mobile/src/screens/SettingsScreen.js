@@ -8,17 +8,39 @@ import {
   Switch,
   Alert,
   Linking,
+  TextInput,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ContactMonitorService from '../services/ContactMonitorService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 
 const SettingsScreen = () => {
   const [monitoringEnabled, setMonitoringEnabled] = useState(false);
   const [hasPermissions, setHasPermissions] = useState(false);
+  const [masterFlowUrl, setMasterFlowUrl] = useState('');
 
   useEffect(() => {
     checkPermissions();
+    loadSettings();
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      const savedUrl = await AsyncStorage.getItem('@webhook:master_flow');
+      if (savedUrl) setMasterFlowUrl(savedUrl);
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
+
+  const saveMasterFlowUrl = async (value) => {
+    setMasterFlowUrl(value);
+    try {
+      await AsyncStorage.setItem('@webhook:master_flow', value);
+    } catch (error) {
+      console.error('Error saving master flow URL:', error);
+    }
+  };
 
   const checkPermissions = async () => {
     const granted = await ContactMonitorService.requestPermissions();
@@ -56,6 +78,88 @@ const SettingsScreen = () => {
   const testNotification = () => {
     ContactMonitorService.testNotification();
     Alert.alert('Test Notification', 'A test notification has been sent!');
+  };
+
+  const testMasterWebhook = async () => {
+    if (!masterFlowUrl) {
+      Alert.alert('Error', 'Please enter the N8N Master Flow URL first');
+      return;
+    }
+
+    Alert.alert('Testing Webhooks', 'Sending 3 test payloads with different action tags...');
+
+    // Mock base64 audio (very short sample)
+    const mockAudioBase64 = 'data:audio/mp4;base64,AAAAGGZ0eXBNNEEgAAAAAE00QSBpc29tAAAA';
+
+    // Mock photo URL
+    const mockPhotoUrl = 'https://res.cloudinary.com/demo/image/upload/sample.jpg';
+
+    // Mock contact data
+    const mockContact = {
+      name: 'John Doe',
+      phone: '+1234567890',
+      email: 'john.doe@example.com',
+    };
+
+    const testPayloads = [
+      {
+        action: 'welcome',
+        contact: mockContact,
+        audio_base64: mockAudioBase64,
+        hasRecording: true,
+        photoUrl: mockPhotoUrl,
+        hasPhoto: true,
+        timestamp: new Date().toISOString(),
+        test: true,
+      },
+      {
+        action: 'link',
+        contact: mockContact,
+        audio_base64: mockAudioBase64,
+        hasRecording: true,
+        photoUrl: mockPhotoUrl,
+        hasPhoto: true,
+        timestamp: new Date().toISOString(),
+        test: true,
+      },
+      {
+        action: 'follow',
+        contact: mockContact,
+        audio_base64: mockAudioBase64,
+        hasRecording: true,
+        photoUrl: mockPhotoUrl,
+        hasPhoto: true,
+        timestamp: new Date().toISOString(),
+        test: true,
+      },
+    ];
+
+    try {
+      const results = await Promise.all(
+        testPayloads.map(async (payload) => {
+          const response = await fetch(masterFlowUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+          return { action: payload.action, status: response.status, ok: response.ok };
+        })
+      );
+
+      const successCount = results.filter(r => r.ok).length;
+
+      Alert.alert(
+        'Test Complete',
+        `Sent ${successCount}/${results.length} test webhooks successfully:\n\n` +
+        results.map(r => `• ${r.action}: ${r.ok ? '✅ Success' : '❌ Failed'} (${r.status})`).join('\n') +
+        '\n\nCheck your N8N workflow to see the data.'
+      );
+    } catch (error) {
+      console.error('Webhook test error:', error);
+      Alert.alert('Error', `Failed to send test webhooks: ${error.message}`);
+    }
   };
 
   return (
@@ -104,6 +208,53 @@ const SettingsScreen = () => {
             <Text style={styles.statusText}>
               ✅ Monitoring Active{'\n'}
               You'll receive a notification within 60 seconds when you add a new contact.
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* N8N Master Flow Webhook */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>🔗 N8N Master Flow</Text>
+        </View>
+
+        <View style={styles.webhookCard}>
+          <Text style={styles.webhookLabel}>Master Webhook URL</Text>
+          <TextInput
+            style={styles.webhookInput}
+            value={masterFlowUrl}
+            onChangeText={saveMasterFlowUrl}
+            placeholder="https://your-n8n-instance.com/webhook/..."
+            placeholderTextColor="#64748b"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={styles.webhookHint}>
+            All actions (welcome, link, follow) will be sent to this single URL with action tags
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.testButton, !masterFlowUrl && styles.testButtonDisabled]}
+          onPress={testMasterWebhook}
+          disabled={!masterFlowUrl}
+        >
+          <Text style={styles.testButtonText}>
+            🧪 Test Webhook (Send 3 Mock Payloads)
+          </Text>
+        </TouchableOpacity>
+
+        {masterFlowUrl && (
+          <View style={styles.infoCard}>
+            <Text style={styles.stepText}>
+              <Text style={styles.stepNumber}>•</Text> Test sends 3 payloads with tags: "welcome", "link", "follow"
+            </Text>
+            <Text style={styles.stepText}>
+              <Text style={styles.stepNumber}>•</Text> Includes mock contact, audio (base64), and photo URL
+            </Text>
+            <Text style={styles.stepText}>
+              <Text style={styles.stepNumber}>•</Text> Check your N8N workflow to verify data routing
             </Text>
           </View>
         )}
@@ -293,6 +444,35 @@ const styles = StyleSheet.create({
   privacyNote: {
     fontStyle: 'italic',
     color: '#6366f1',
+  },
+  webhookCard: {
+    backgroundColor: '#1e293b',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  webhookLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f1f5f9',
+    marginBottom: 8,
+  },
+  webhookInput: {
+    backgroundColor: '#334155',
+    color: '#f1f5f9',
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  webhookHint: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+  },
+  testButtonDisabled: {
+    backgroundColor: '#334155',
+    opacity: 0.5,
   },
 });
 
