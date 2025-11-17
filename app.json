@@ -1,29 +1,37 @@
 {
   "expo": {
-    "name": "ContextCRM",
-    "slug": "ContextCRM",
+    "name": "Context CRM",
+    "slug": "context-crm",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0f172a",
+      "resizeMode": "contain"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourname.contextcrm",
+      "infoPlist": {
+        "NSContactsUsageDescription": "We need access to your contacts to notify you when you add someone new.",
+        "NSMicrophoneUsageDescription": "We need microphone access to record voice notes.",
+        "NSLocationWhenInUseUsageDescription": "We use your location to remember where you met contacts.",
+        "UIBackgroundModes": ["audio", "fetch"]
+      }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
+      "package": "com.yourname.contextcrm",
+      "permissions": [
+        "READ_CONTACTS",
+        "POST_NOTIFICATIONS",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "scheme": "contextcrm",
+    "plugins": [
+      "expo-notifications"
+    ]
   }
 }
