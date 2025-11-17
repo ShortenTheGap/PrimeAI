@@ -8,15 +8,19 @@ import {
   Alert,
   TextInput,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import API from '../config/api';
 
 const ContactListScreen = () => {
   const navigation = useNavigation();
   const [contacts, setContacts] = useState([]);
   const [filteredContacts, setFilteredContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -25,13 +29,28 @@ const ContactListScreen = () => {
   );
 
   const loadContacts = async () => {
+    setIsLoading(true);
     try {
-      const stored = await AsyncStorage.getItem('@contacts:list');
-      const contactsList = stored ? JSON.parse(stored) : [];
+      console.log(`Loading contacts from cloud (${API.ENV_NAME})...`);
+      const response = await axios.get(`${API.API_URL}/api/contacts`);
+      const contactsList = response.data || [];
+
+      console.log(`Loaded ${contactsList.length} contacts from cloud`);
       setContacts(contactsList);
       setFilteredContacts(contactsList);
     } catch (error) {
       console.error('Error loading contacts:', error);
+
+      let errorMessage = 'Failed to load contacts';
+      if (error.request) {
+        errorMessage = 'Cannot reach server. Please check your internet connection.';
+      }
+
+      Alert.alert('Error', errorMessage);
+      setContacts([]);
+      setFilteredContacts([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -50,7 +69,7 @@ const ContactListScreen = () => {
     setFilteredContacts(filtered);
   };
 
-  const deleteContact = async (id) => {
+  const deleteContact = async (contactId) => {
     Alert.alert(
       'Delete Contact',
       'Are you sure you want to delete this contact?',
@@ -61,25 +80,16 @@ const ContactListScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const updatedContacts = contacts.filter(c => c.id !== id);
-              await AsyncStorage.setItem('@contacts:list', JSON.stringify(updatedContacts));
-              
-              setContacts(updatedContacts);
-              if (searchQuery.trim()) {
-                const filtered = updatedContacts.filter((contact) =>
-                  contact.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  contact.phone?.includes(searchQuery) ||
-                  contact.email?.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-                setFilteredContacts(filtered);
-              } else {
-                setFilteredContacts(updatedContacts);
-              }
-              
-              Alert.alert('Success', 'Contact deleted');
+              console.log(`Deleting contact ${contactId} from cloud...`);
+              await axios.delete(`${API.API_URL}/api/contacts/${contactId}`);
+
+              // Reload contacts from cloud
+              await loadContacts();
+
+              Alert.alert('✅ Success', 'Contact deleted from cloud');
             } catch (error) {
               console.error('Error deleting contact:', error);
-              Alert.alert('Error', 'Failed to delete contact');
+              Alert.alert('❌ Error', 'Failed to delete contact');
             }
           },
         },
@@ -198,7 +208,7 @@ const ContactListScreen = () => {
 
           <TouchableOpacity
             style={[styles.actionBtn, styles.deleteBtn]}
-            onPress={() => deleteContact(item.id)}
+            onPress={() => deleteContact(item.contact_id || item.id)}
           >
             <Text style={styles.actionBtnText}>🗑️ Delete</Text>
           </TouchableOpacity>
@@ -210,6 +220,11 @@ const ContactListScreen = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Contact List</Text>
+        <View style={styles.cloudBanner}>
+          <Text style={styles.cloudBannerText}>
+            ☁️ Loading from: {API.ENV_NAME}
+          </Text>
+        </View>
         <TextInput
           style={styles.searchInput}
           placeholder="Search contacts..."
@@ -219,7 +234,12 @@ const ContactListScreen = () => {
         />
       </View>
 
-      {filteredContacts.length === 0 ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text style={styles.loadingText}>Loading contacts from cloud...</Text>
+        </View>
+      ) : filteredContacts.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>
             {searchQuery ? 'No contacts found' : 'No contacts yet.'}
@@ -229,7 +249,7 @@ const ContactListScreen = () => {
         <FlatList
           data={filteredContacts}
           renderItem={renderContact}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => (item.contact_id || item.id || item.name).toString()}
           contentContainerStyle={styles.listContent}
         />
       )}
@@ -251,7 +271,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#f1f5f9',
+    marginBottom: 8,
+  },
+  cloudBanner: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    padding: 8,
+    borderRadius: 6,
     marginBottom: 12,
+  },
+  cloudBannerText: {
+    color: '#10b981',
+    fontSize: 12,
+    fontWeight: '600',
   },
   searchInput: {
     backgroundColor: '#1e293b',
@@ -347,6 +378,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
   },
   emptyState: {
     flex: 1,

@@ -13,6 +13,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import axios from 'axios';
+import API from '../config/api';
 
 const ContactCaptureScreen = () => {
   const navigation = useNavigation();
@@ -27,6 +29,7 @@ const ContactCaptureScreen = () => {
   const [recordingUri, setRecordingUri] = useState(editContact?.recordingUri || null);
   const [hasRecording, setHasRecording] = useState(editContact?.hasRecording || false);
   const [photoUrl, setPhotoUrl] = useState(editContact?.photoUrl || null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     name: editContact?.name || prefilledContact?.name || '',
@@ -212,45 +215,90 @@ const ContactCaptureScreen = () => {
         return;
       }
 
+      setIsSaving(true);
+
       try {
-        const newContact = {
-          id: editContact?.id || Date.now().toString(),
-          ...formData,
-          recordingUri,
-          hasRecording,
-          photoUrl,
-          hasPhoto: !!photoUrl,
-          createdAt: editContact?.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+        // Prepare contact data for API
+        const contactFormData = new FormData();
+        contactFormData.append('name', formData.name);
+        contactFormData.append('phone', formData.phone || '');
+        contactFormData.append('email', formData.email || '');
 
-        // Send update webhook and get transcript
-        const transcript = await sendUpdateWebhook(newContact);
-        
-        // Add transcript to contact if received
-        if (transcript) {
-          newContact.transcript = transcript;
+        // Add voice recording if exists
+        if (recordingUri) {
+          const uriParts = recordingUri.split('.');
+          const fileType = uriParts[uriParts.length - 1];
+
+          contactFormData.append('audio', {
+            uri: recordingUri,
+            type: `audio/${fileType}`,
+            name: `voice-note.${fileType}`,
+          });
         }
 
-        const stored = await AsyncStorage.getItem('@contacts:list');
-        const contacts = stored ? JSON.parse(stored) : [];
+        // Add photo URL if exists
+        if (photoUrl) {
+          contactFormData.append('photoUrl', photoUrl);
+        }
 
-        if (mode === 'edit') {
-          const index = contacts.findIndex(c => c.id === editContact.id);
-          if (index !== -1) {
-            contacts[index] = newContact;
-          }
+        console.log(`${mode === 'edit' ? 'Updating' : 'Creating'} contact in cloud (${API.ENV_NAME})...`);
+
+        let response;
+        if (mode === 'edit' && editContact?.contact_id) {
+          // Update existing contact
+          response = await axios.put(
+            `${API.API_URL}/api/contacts/${editContact.contact_id}`,
+            contactFormData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            }
+          );
         } else {
-          contacts.push(newContact);
+          // Create new contact
+          response = await axios.post(
+            `${API.API_URL}/api/contacts`,
+            contactFormData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            }
+          );
         }
 
-        await AsyncStorage.setItem('@contacts:list', JSON.stringify(contacts));
+        const savedContact = response.data;
+        console.log('Contact saved to cloud:', savedContact);
 
-        Alert.alert('Success', `Contact ${mode === 'edit' ? 'updated' : 'saved'}!${transcript ? '\n\nTranscript received!' : ''}`);
-        navigation.navigate('ContactList');
+        // Send webhook to N8N with the saved contact data
+        await sendUpdateWebhook(savedContact);
+
+        Alert.alert(
+          '✅ Success!',
+          `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('ContactList'),
+            },
+          ]
+        );
       } catch (error) {
         console.error('Error saving contact:', error);
-        Alert.alert('Error', 'Failed to save contact');
+
+        let errorMessage = 'Failed to save contact';
+        if (error.response) {
+          errorMessage = error.response.data?.error || `Server error: ${error.response.status}`;
+        } else if (error.request) {
+          errorMessage = 'Cannot reach server. Please check your internet connection.';
+        } else {
+          errorMessage = error.message;
+        }
+
+        Alert.alert('❌ Error', errorMessage);
+      } finally {
+        setIsSaving(false);
       }
     };
 
@@ -390,6 +438,11 @@ const ContactCaptureScreen = () => {
             </Text>
           </View>
         )}
+        <View style={styles.cloudBanner}>
+          <Text style={styles.cloudBannerText}>
+            ☁️ Saving to: {API.ENV_NAME}
+          </Text>
+        </View>
       </View>
 
       {/* Contact Details - TOP */}
@@ -496,9 +549,16 @@ const ContactCaptureScreen = () => {
       </View>
 
       {/* Save Button */}
-      <TouchableOpacity style={styles.saveButton} onPress={saveContact}>
+      <TouchableOpacity
+        style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+        onPress={saveContact}
+        disabled={isSaving}
+      >
         <Text style={styles.saveButtonText}>
-          💾 {mode === 'edit' ? 'Update Contact' : 'Save Contact'}
+          {isSaving
+            ? '☁️ Saving to Cloud...'
+            : `💾 ${mode === 'edit' ? 'Update Contact' : 'Save to Cloud'}`
+          }
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -530,6 +590,17 @@ const styles = StyleSheet.create({
   bannerText: {
     color: '#6366f1',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  cloudBanner: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  cloudBannerText: {
+    color: '#10b981',
+    fontSize: 12,
     fontWeight: '600',
   },
   detailsSection: {
@@ -662,6 +733,9 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#64748b',
   },
   saveButtonText: {
     color: 'white',

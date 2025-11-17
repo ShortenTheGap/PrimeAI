@@ -1,4 +1,4 @@
-**
+/**
  * API Configuration
  * Automatically switches between local development and production
  */
@@ -10,7 +10,7 @@ const ENV = {
     name: 'Development'
   },
   prod: {
-    apiUrl: 'https://primeai-production-ec82.up.railway.app',  // ✅ UPDATED!
+    apiUrl: 'https://primeai-production-ec82.up.railway.app',
     name: 'Production'
   }
 };
