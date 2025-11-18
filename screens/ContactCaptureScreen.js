@@ -271,8 +271,8 @@ const ContactCaptureScreen = () => {
         const savedContact = response.data;
         console.log('Contact saved to cloud:', savedContact);
 
-        // Send webhook to N8N with the saved contact data
-        await sendUpdateWebhook(savedContact);
+        // NOTE: Backend handles N8N webhook automatically after processing audio
+        // No need to send webhook from mobile app anymore
 
         Alert.alert(
           '✅ Success!',
