@@ -109,16 +109,17 @@ const ContactListScreen = () => {
         const payload = {
           action: 'follow',
           contact: {
+            id: contact.contact_id || contact.id,
             name: contact.name,
             phone: contact.phone,
             email: contact.email,
           },
           audio_base64: null,  // Skip audio to keep payload small
-          hasRecording: contact.hasRecording || false,
-          photoUrl: contact.photoUrl || null,
-          hasPhoto: contact.hasPhoto || false,
-          createdAt: contact.createdAt,
-          updatedAt: contact.updatedAt,
+          hasRecording: contact.has_recording || false,
+          photoUrl: contact.photo_url || null,
+          hasPhoto: !!contact.photo_url,
+          createdAt: contact.created_at,
+          updatedAt: contact.updated_at,
           timestamp: new Date().toISOString(),
         };
 
