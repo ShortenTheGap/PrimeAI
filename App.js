@@ -11,6 +11,7 @@ import SettingsScreen from './screens/SettingsScreen';
 
 // Import services
 import ContactMonitorService from './services/ContactMonitorService';
+import BackgroundTaskService from './services/BackgroundTaskService';
 
 const Tab = createBottomTabNavigator();
 
@@ -56,8 +57,18 @@ const App = () => {
 
   const initializeApp = async () => {
     try {
-      // Only initialize contact monitoring - skip background tasks for now
+      // Initialize foreground contact monitoring
       await ContactMonitorService.initialize();
+      console.log('✅ Foreground monitoring initialized');
+
+      // Initialize background monitoring (works in native builds, not Expo Go)
+      const backgroundEnabled = await BackgroundTaskService.register();
+      if (backgroundEnabled) {
+        console.log('✅ Background monitoring enabled - app will check contacts every 15 minutes');
+      } else {
+        console.log('⚠️ Background monitoring not available - foreground monitoring only');
+      }
+
       console.log('✅ App initialized successfully');
     } catch (error) {
       console.error('❌ App initialization error:', error);
