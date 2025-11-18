@@ -19,8 +19,6 @@
         "UIBackgroundModes": [
           "audio",
           "fetch",
-          "audio",
-          "fetch"
         ],
         "ITSAppUsesNonExemptEncryption": false
       }
