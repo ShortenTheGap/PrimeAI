@@ -16,11 +16,17 @@
         "NSContactsUsageDescription": "We need access to your contacts to notify you when you add someone new.",
         "NSMicrophoneUsageDescription": "We need microphone access to record voice notes.",
         "NSLocationWhenInUseUsageDescription": "We use your location to remember where you met contacts.",
-        "UIBackgroundModes": ["audio", "fetch"]
+        "UIBackgroundModes": [
+          "audio",
+          "fetch",
+          "audio",
+          "fetch"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.yourname.contextcrm",
+      "package": "com.prime.contextcrm",
       "permissions": [
         "READ_CONTACTS",
         "POST_NOTIFICATIONS",
@@ -32,6 +38,11 @@
     "scheme": "contextcrm",
     "plugins": [
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "72de8d95-4b39-49c7-a3e0-5dc41ad484e0"
+      }
+    }
   }
 }
