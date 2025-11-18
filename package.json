@@ -6,7 +6,9 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "server": "node server/index.js",
+    "server:dev": "NODE_ENV=development node server/index.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -14,6 +16,9 @@
     "@react-navigation/native": "^7.1.20",
     "@react-navigation/native-stack": "^7.6.3",
     "axios": "^1.13.2",
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
     "expo": "~54.0.23",
     "expo-av": "~16.0.7",
     "expo-background-fetch": "~14.0.7",
@@ -23,6 +28,9 @@
     "expo-notifications": "~0.32.12",
     "expo-status-bar": "~3.0.8",
     "expo-task-manager": "~14.0.8",
+    "form-data": "^4.0.1",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.13.1",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-safe-area-context": "~5.6.0",
