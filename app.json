@@ -4,6 +4,7 @@
     "slug": "context-crm",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
       "backgroundColor": "#0f172a",
@@ -33,6 +34,11 @@
     "scheme": "contextcrm",
     "plugins": [
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "72de8d95-4b39-49c7-a3e0-5dc41ad484e0"
+      }
+    }
   }
 }
