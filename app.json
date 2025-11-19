@@ -12,7 +12,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourname.contextcrm",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "NSContactsUsageDescription": "We need access to your contacts to notify you when you add someone new.",
         "NSMicrophoneUsageDescription": "We need microphone access to record voice notes.",
