@@ -2,6 +2,7 @@
  * API Configuration
  * Automatically switches between local development and production
  */
+import Constants from 'expo-constants';
 
 // Determine if we're in development or production
 const ENV = {
@@ -17,12 +18,17 @@ const ENV = {
 
 // Function to get the correct environment
 const getEnvVars = () => {
-  // __DEV__ is set by React Native packager
-  // When running with 'expo start', __DEV__ is true
-  // When built for TestFlight/production, __DEV__ is false
-  if (__DEV__) {
+  // Check if running in Expo Go (development) or standalone build (production)
+  // Constants.appOwnership:
+  // - 'expo' = running in Expo Go (development)
+  // - 'standalone' = built app (TestFlight/App Store)
+  const isExpoGo = Constants.appOwnership === 'expo';
+
+  if (isExpoGo || __DEV__) {
+    console.log('🔧 Using DEVELOPMENT environment (localhost)');
     return ENV.dev;
   } else {
+    console.log('☁️ Using PRODUCTION environment (Railway)');
     return ENV.prod;
   }
 };
