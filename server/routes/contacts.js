@@ -1,267 +1,253 @@
 const express = require('express');
 const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
-const { db } = require('../database/init');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const axios = require('axios');
+const FormData = require('form-data');
+const db = require('../database/db');
 
-// Configure multer for voice note uploads
+// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    const uploadDir = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
 
 const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /audio\/(wav|mp3|m4a|mpeg|webm|ogg)/;
-    if (allowedTypes.test(file.mimetype)) {
-      cb(null, true);
+    if (file.fieldname === 'audio') {
+      // Accept audio files
+      if (file.mimetype.startsWith('audio/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only audio files are allowed'));
+      }
     } else {
-      cb(new Error('Invalid audio file type'));
+      cb(null, true);
     }
   }
 });
 
-// GET all contacts with optional filters
-router.get('/', (req, res) => {
+// Send audio to N8N for transcription
+const sendToN8N = async (audioPath, contactData) => {
   try {
-    const { search, tag, status, priority, limit = 100, offset = 0 } = req.query;
+    // For now, we'll return a placeholder
+    // In production, you'll configure the N8N webhook URL via environment variable
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
-    let query = 'SELECT * FROM contacts WHERE 1=1';
-    const params = [];
-
-    // Search by name, venue, or topics
-    if (search) {
-      query += ` AND (name LIKE ? OR venue_name LIKE ? OR topics_discussed LIKE ? OR transcription LIKE ?)`;
-      const searchParam = `%${search}%`;
-      params.push(searchParam, searchParam, searchParam, searchParam);
+    if (!n8nWebhookUrl) {
+      console.log('⚠️ N8N webhook URL not configured, skipping transcription');
+      return null;
     }
 
-    // Filter by tag
-    if (tag) {
-      query += ` AND tags LIKE ?`;
-      params.push(`%${tag}%`);
-    }
+    const formData = new FormData();
+    formData.append('audio', fs.createReadStream(audioPath));
+    formData.append('contactData', JSON.stringify(contactData));
 
-    // Filter by status
-    if (status) {
-      query += ` AND status = ?`;
-      params.push(status);
-    }
-
-    // Filter by priority
-    if (priority) {
-      query += ` AND follow_up_priority = ?`;
-      params.push(priority);
-    }
-
-    query += ` ORDER BY date_added DESC LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), parseInt(offset));
-
-    const contacts = db.prepare(query).all(...params);
-
-    // Parse JSON fields
-    const formattedContacts = contacts.map(contact => ({
-      ...contact,
-      topics_discussed: contact.topics_discussed ? JSON.parse(contact.topics_discussed) : [],
-      tags: contact.tags ? JSON.parse(contact.tags) : [],
-      enrichment_data: contact.enrichment_data ? JSON.parse(contact.enrichment_data) : null
-    }));
-
-    res.json({
-      success: true,
-      count: formattedContacts.length,
-      contacts: formattedContacts
+    const response = await axios.post(n8nWebhookUrl, formData, {
+      headers: {
+        ...formData.getHeaders(),
+      },
+      timeout: 60000, // 60 second timeout
     });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error sending to N8N:', error.message);
+    return null;
+  }
+};
+
+// GET all contacts
+router.get('/', async (req, res) => {
+  try {
+    const contacts = await db.getAllContacts();
+    res.json(contacts);
   } catch (error) {
     console.error('Error fetching contacts:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ error: 'Failed to fetch contacts' });
   }
 });
 
-// GET single contact by ID
-router.get('/:id', (req, res) => {
+// GET single contact
+router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const contact = db.prepare('SELECT * FROM contacts WHERE contact_id = ?').get(id);
-
+    const contact = await db.getContactById(req.params.id);
     if (!contact) {
-      return res.status(404).json({ success: false, error: 'Contact not found' });
+      return res.status(404).json({ error: 'Contact not found' });
     }
-
-    // Parse JSON fields
-    const formattedContact = {
-      ...contact,
-      topics_discussed: contact.topics_discussed ? JSON.parse(contact.topics_discussed) : [],
-      tags: contact.tags ? JSON.parse(contact.tags) : [],
-      enrichment_data: contact.enrichment_data ? JSON.parse(contact.enrichment_data) : null
-    };
-
-    res.json({ success: true, contact: formattedContact });
+    res.json(contact);
   } catch (error) {
     console.error('Error fetching contact:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ error: 'Failed to fetch contact' });
   }
 });
 
-// POST create new contact
-router.post('/', upload.single('voiceNote'), (req, res) => {
+// POST new contact
+router.post('/', upload.single('audio'), async (req, res) => {
   try {
-    const {
+    const { name, phone, email, photoUrl } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    let recording_uri = null;
+    let has_recording = false;
+
+    // Handle audio file if uploaded
+    if (req.file) {
+      recording_uri = `/uploads/${req.file.filename}`;
+      has_recording = true;
+
+      // Send to N8N for transcription (async, don't wait)
+      const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
+      sendToN8N(audioPath, { name, phone, email }).catch(err => {
+        console.error('N8N processing error:', err);
+      });
+    }
+
+    const contactData = {
       name,
-      phone,
-      email,
-      location_lat,
-      location_long,
-      location_address,
-      venue_name,
-      transcription,
-      ai_summary,
-      topics_discussed,
-      follow_up_type,
-      follow_up_priority,
-      follow_up_date,
-      tags,
-      linkedin_url,
-      company_name,
-      status
-    } = req.body;
+      phone: phone || null,
+      email: email || null,
+      photo_url: photoUrl || null,
+      recording_uri,
+      has_recording,
+      transcript: null,
+      analysis: null
+    };
 
-    const contact_id = uuidv4();
-    const date_added = new Date().toISOString();
-    const raw_voice_note_path = req.file ? req.file.path : null;
+    const newContact = await db.createContact(contactData);
 
-    const stmt = db.prepare(`
-      INSERT INTO contacts (
-        contact_id, name, phone, email, date_added,
-        location_lat, location_long, location_address, venue_name,
-        raw_voice_note_path, transcription, ai_summary,
-        topics_discussed, follow_up_type, follow_up_priority,
-        follow_up_date, tags, linkedin_url, company_name, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const info = stmt.run(
-      contact_id, name, phone || null, email || null, date_added,
-      location_lat || null, location_long || null, location_address || null, venue_name || null,
-      raw_voice_note_path, transcription || null, ai_summary || null,
-      topics_discussed || null, follow_up_type || null, follow_up_priority || 'warm',
-      follow_up_date || null, tags || null, linkedin_url || null, company_name || null,
-      status || 'new'
-    );
-
-    res.status(201).json({
-      success: true,
-      message: 'Contact created successfully',
-      contact_id,
-      changes: info.changes
-    });
+    console.log('✅ Contact created:', newContact.contact_id);
+    res.status(201).json(newContact);
   } catch (error) {
     console.error('Error creating contact:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ error: error.message || 'Failed to create contact' });
   }
 });
 
 // PUT update contact
-router.put('/:id', upload.single('voiceNote'), (req, res) => {
+router.put('/:id', upload.single('audio'), async (req, res) => {
   try {
-    const { id } = req.params;
-    const updates = req.body;
+    const { name, phone, email, photoUrl } = req.body;
+    const contactId = req.params.id;
 
-    // Check if contact exists
-    const existing = db.prepare('SELECT * FROM contacts WHERE contact_id = ?').get(id);
-    if (!existing) {
-      return res.status(404).json({ success: false, error: 'Contact not found' });
+    // Get existing contact
+    const existingContact = await db.getContactById(contactId);
+    if (!existingContact) {
+      return res.status(404).json({ error: 'Contact not found' });
     }
 
-    // Handle voice note update
+    let recording_uri = existingContact.recording_uri;
+    let has_recording = existingContact.has_recording;
+
+    // Handle new audio file if uploaded
     if (req.file) {
-      updates.raw_voice_note_path = req.file.path;
+      // Delete old audio file if exists
+      if (existingContact.recording_uri) {
+        const oldPath = path.join(__dirname, '../..', existingContact.recording_uri);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      recording_uri = `/uploads/${req.file.filename}`;
+      has_recording = true;
+
+      // Send to N8N for transcription (async, don't wait)
+      const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
+      sendToN8N(audioPath, { name, phone, email }).catch(err => {
+        console.error('N8N processing error:', err);
+      });
     }
 
-    // Build dynamic update query
-    const fields = Object.keys(updates).filter(key => updates[key] !== undefined);
-    if (fields.length === 0) {
-      return res.status(400).json({ success: false, error: 'No fields to update' });
-    }
+    const contactData = {
+      name: name || existingContact.name,
+      phone: phone !== undefined ? phone : existingContact.phone,
+      email: email !== undefined ? email : existingContact.email,
+      photo_url: photoUrl !== undefined ? photoUrl : existingContact.photo_url,
+      recording_uri,
+      has_recording,
+      transcript: existingContact.transcript,
+      analysis: existingContact.analysis
+    };
 
-    const setClause = fields.map(field => `${field} = ?`).join(', ');
-    const values = fields.map(field => updates[field]);
-    values.push(new Date().toISOString()); // updated_at
-    values.push(id);
+    const updatedContact = await db.updateContact(contactId, contactData);
 
-    const stmt = db.prepare(`
-      UPDATE contacts
-      SET ${setClause}, updated_at = ?
-      WHERE contact_id = ?
-    `);
-
-    const info = stmt.run(...values);
-
-    res.json({
-      success: true,
-      message: 'Contact updated successfully',
-      changes: info.changes
-    });
+    console.log('✅ Contact updated:', contactId);
+    res.json(updatedContact);
   } catch (error) {
     console.error('Error updating contact:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ error: error.message || 'Failed to update contact' });
+  }
+});
+
+// PATCH update transcript (called by N8N webhook)
+router.patch('/:id/transcript', async (req, res) => {
+  try {
+    const { transcript, analysis } = req.body;
+    const contactId = req.params.id;
+
+    const existingContact = await db.getContactById(contactId);
+    if (!existingContact) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+
+    const contactData = {
+      ...existingContact,
+      transcript: transcript || existingContact.transcript,
+      analysis: analysis || existingContact.analysis
+    };
+
+    const updatedContact = await db.updateContact(contactId, contactData);
+
+    console.log('✅ Transcript updated for contact:', contactId);
+    res.json(updatedContact);
+  } catch (error) {
+    console.error('Error updating transcript:', error);
+    res.status(500).json({ error: 'Failed to update transcript' });
   }
 });
 
 // DELETE contact
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const contactId = req.params.id;
 
-    const stmt = db.prepare('DELETE FROM contacts WHERE contact_id = ?');
-    const info = stmt.run(id);
-
-    if (info.changes === 0) {
-      return res.status(404).json({ success: false, error: 'Contact not found' });
+    // Get contact to delete associated files
+    const contact = await db.getContactById(contactId);
+    if (!contact) {
+      return res.status(404).json({ error: 'Contact not found' });
     }
 
-    res.json({
-      success: true,
-      message: 'Contact deleted successfully',
-      changes: info.changes
-    });
+    // Delete audio file if exists
+    if (contact.recording_uri) {
+      const audioPath = path.join(__dirname, '../..', contact.recording_uri);
+      if (fs.existsSync(audioPath)) {
+        fs.unlinkSync(audioPath);
+      }
+    }
+
+    await db.deleteContact(contactId);
+
+    console.log('✅ Contact deleted:', contactId);
+    res.json({ message: 'Contact deleted successfully' });
   } catch (error) {
     console.error('Error deleting contact:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET follow-ups (with filtering by timeframe)
-router.get('/follow-ups/list', (req, res) => {
-  try {
-    const { timeframe = 'all' } = req.query;
-
-    let query = 'SELECT * FROM follow_ups_view WHERE 1=1';
-
-    if (timeframe !== 'all') {
-      query += ` AND follow_up_status = ?`;
-    }
-
-    const followUps = timeframe === 'all'
-      ? db.prepare(query).all()
-      : db.prepare(query).all(timeframe);
-
-    res.json({
-      success: true,
-      count: followUps.length,
-      follow_ups: followUps
-    });
-  } catch (error) {
-    console.error('Error fetching follow-ups:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ error: 'Failed to delete contact' });
   }
 });
 

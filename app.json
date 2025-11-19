@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Context CRM",
+    "slug": "context-crm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0f172a",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourname.contextcrm",
+      "buildNumber": "5",
+      "infoPlist": {
+        "NSContactsUsageDescription": "We need access to your contacts to notify you when you add someone new.",
+        "NSMicrophoneUsageDescription": "We need microphone access to record voice notes.",
+        "NSLocationWhenInUseUsageDescription": "We use your location to remember where you met contacts.",
+        "UIBackgroundModes": ["audio", "fetch"]
+      }
+    },
+    "android": {
+      "package": "com.yourname.contextcrm",
+      "permissions": [
+        "READ_CONTACTS",
+        "POST_NOTIFICATIONS",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "scheme": "contextcrm",
+    "plugins": [
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "72de8d95-4b39-49c7-a3e0-5dc41ad484e0"
+      }
+    }
+  }
+}

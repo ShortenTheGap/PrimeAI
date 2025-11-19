@@ -1,72 +1,64 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const bodyParser = require('body-parser');
+const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-
-// Load environment variables
-dotenv.config();
-
-// Import routes
-const contactRoutes = require('./routes/contacts');
-const aiRoutes = require('./routes/ai');
-
-// Import database initialization
-const { initDatabase } = require('./database/init');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Ensure upload directories exist
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 // Middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
-}));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors());
+app.use(express.json());
+app.use('/uploads', express.static(uploadDir));
 
-// Create necessary directories
-const directories = ['./data', './uploads', './logs'];
-directories.forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
-
-// Initialize database
-initDatabase();
+// Database setup
+const db = require('./database/db');
 
 // Routes
-app.use('/api/contacts', contactRoutes);
-app.use('/api', aiRoutes);
+const contactsRouter = require('./routes/contacts');
+app.use('/api/contacts', contactsRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    message: 'Context-Aware CRM API is running',
-    timestamp: new Date().toISOString()
+    message: 'PrimeAI Backend is running',
+    environment: process.env.NODE_ENV || 'development',
+    database: db.isConnected ? 'connected' : 'disconnected'
   });
 });
 
-// Serve static files from uploads
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'PrimeAI API Server',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      contacts: '/api/contacts'
+    }
+  });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err.stack);
+  console.error('Error:', err);
   res.status(500).json({
-    error: 'Something went wrong!',
-    message: err.message
+    error: err.message || 'Internal server error',
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Context-Aware CRM API ready`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`💾 Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite'}`);
 });
-
-module.exports = app;
