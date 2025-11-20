@@ -39,7 +39,8 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     message: 'PrimeAI API Server',
-    version: '1.0.0',
+    version: '1.0.1',
+    updated: '2025-11-20',
     endpoints: {
       health: '/api/health',
       contacts: '/api/contacts'
