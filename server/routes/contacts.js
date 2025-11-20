@@ -55,7 +55,7 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null) => {
 
     // Build complete payload matching the mobile app webhook format
     const payload = {
-      action: 'welcome',  // New contact with voice note
+      action: 'update',  // Update action for voice note transcription
       contact: {
         name: contactData.name,
         phone: contactData.phone || null,
