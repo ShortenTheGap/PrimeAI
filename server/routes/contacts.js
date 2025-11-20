@@ -105,6 +105,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
     let recording_uri = null;
     let has_recording = false;
+    let webhook_status = 'not_sent';
 
     // Handle audio file if uploaded
     if (req.file) {
@@ -113,9 +114,20 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
       // Send to N8N for transcription (async, don't wait)
       const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
-      sendToN8N(audioPath, { name, phone, email }).catch(err => {
-        console.error('N8N processing error:', err);
-      });
+      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+
+      if (n8nWebhookUrl) {
+        webhook_status = 'sent';
+        console.log('📤 Sending audio to N8N webhook for processing...');
+        sendToN8N(audioPath, { name, phone, email }).catch(err => {
+          console.error('❌ N8N processing error:', err);
+        });
+      } else {
+        webhook_status = 'not_configured';
+        console.log('⚠️ N8N_WEBHOOK_URL not configured - skipping webhook');
+      }
+    } else {
+      console.log('ℹ️ No audio file uploaded - skipping webhook');
     }
 
     const contactData = {
@@ -132,7 +144,11 @@ router.post('/', upload.single('audio'), async (req, res) => {
     const newContact = await db.createContact(contactData);
 
     console.log('✅ Contact created:', newContact.contact_id);
-    res.status(201).json(newContact);
+    res.status(201).json({
+      ...newContact,
+      webhook_status,
+      has_recording
+    });
   } catch (error) {
     console.error('Error creating contact:', error);
     res.status(500).json({ error: error.message || 'Failed to create contact' });

@@ -27,21 +27,31 @@ const getEnvVars = () => {
   const isStandaloneBuild = Constants.appOwnership === 'standalone';
   const isExpoGo = Constants.appOwnership === 'expo';
 
+  // Debug logging
+  console.log('🔍 Environment Detection:');
+  console.log('  - Constants.appOwnership:', Constants.appOwnership);
+  console.log('  - __DEV__:', __DEV__);
+  console.log('  - isStandaloneBuild:', isStandaloneBuild);
+  console.log('  - isExpoGo:', isExpoGo);
+
   // IMPORTANT: Prioritize standalone builds over __DEV__
   // TestFlight and App Store builds should ALWAYS use production
   if (isStandaloneBuild) {
     console.log('☁️ Using PRODUCTION environment (Railway) - Standalone Build');
+    console.log('  - API URL:', ENV.prod.apiUrl);
     return ENV.prod;
   }
 
   // Only use dev environment if in Expo Go or development mode
   if (isExpoGo || __DEV__) {
     console.log('🔧 Using DEVELOPMENT environment (localhost)');
+    console.log('  - API URL:', ENV.dev.apiUrl);
     return ENV.dev;
   }
 
   // Default to production for any other case
   console.log('☁️ Using PRODUCTION environment (Railway) - Default');
+  console.log('  - API URL:', ENV.prod.apiUrl);
   return ENV.prod;
 };
 
