@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Context CRM",
+    "name": "cnnected",
     "slug": "context-crm",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,7 +18,13 @@
         "NSContactsUsageDescription": "We need access to your contacts to notify you when you add someone new.",
         "NSMicrophoneUsageDescription": "We need microphone access to record voice notes.",
         "NSLocationWhenInUseUsageDescription": "We use your location to remember where you met contacts.",
-        "UIBackgroundModes": ["audio", "fetch"]
+        "UIBackgroundModes": [
+          "audio",
+          "fetch",
+          "audio",
+          "fetch"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
