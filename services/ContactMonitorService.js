@@ -12,6 +12,8 @@ class ContactMonitorService {
     this.checkInterval = null;
     this.isInitializing = false;
     this.appStateSubscription = null;
+    this.currentAppState = 'active';
+    this.navigationCallback = null;
   }
 
   async initialize() {
@@ -97,6 +99,7 @@ class ContactMonitorService {
 
     // Listen for app state changes (background <-> foreground)
     this.appStateSubscription = AppState.addEventListener('change', async (nextAppState) => {
+      this.currentAppState = nextAppState;
       if (nextAppState === 'active') {
         console.log('📱 App returned to foreground - checking for new contacts...');
         await this.checkForNewContacts();
@@ -159,6 +162,11 @@ class ContactMonitorService {
     }
   }
 
+  setNavigationCallback(callback) {
+    this.navigationCallback = callback;
+    console.log('✅ Navigation callback registered');
+  }
+
   async triggerContextCaptureNotification(contact) {
     const displayName = contact.name || contact.firstName || contact.lastName || 'Unknown';
     const phoneNumber = contact.phoneNumbers?.[0]?.number || '';
@@ -171,7 +179,15 @@ class ContactMonitorService {
       email: email,
     };
 
-    console.log('📤 Sending notification for:', JSON.stringify(contactData, null, 2));
+    // If app is in foreground, navigate directly instead of showing notification
+    if (this.currentAppState === 'active' && this.navigationCallback) {
+      console.log('🚀 App is active - auto-navigating to Contact Capture for:', displayName);
+      this.navigationCallback(contactData);
+      return;
+    }
+
+    // App is in background - send notification (existing behavior)
+    console.log('📤 App in background - sending notification for:', displayName);
 
     await Notifications.scheduleNotificationAsync({
       content: {

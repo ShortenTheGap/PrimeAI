@@ -61,6 +61,15 @@ const App = () => {
       await ContactMonitorService.initialize();
       console.log('✅ Foreground monitoring initialized');
 
+      // Register navigation callback for auto-navigation when new contact detected in foreground
+      ContactMonitorService.setNavigationCallback((contactData) => {
+        console.log('🔄 Auto-navigating to Contact Capture with:', contactData.name);
+        navigationRef.current?.navigate('ContactCapture', {
+          contactData: contactData,
+          mode: 'add'
+        });
+      });
+
       // Initialize background monitoring (works in native builds, not Expo Go)
       const backgroundEnabled = await BackgroundTaskService.register();
       if (backgroundEnabled) {
