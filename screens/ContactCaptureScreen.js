@@ -61,6 +61,7 @@ const ContactCaptureScreen = () => {
         setRecordingUri(editContact.recordingUri || null);
         setHasRecording(editContact.hasRecording || false);
         setPhotoUrl(editContact.photoUrl || null);
+        setTranscript(editContact.transcript || null);
       } else if (mode === 'add' && prefilledContact) {
         // New contact from notification - populate with prefilled data
         setFormData({
