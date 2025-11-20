@@ -264,6 +264,7 @@ const ContactCaptureScreen = () => {
               headers: {
                 'Content-Type': 'multipart/form-data',
               },
+              timeout: 30000, // 30 second timeout
             }
           );
         } else {
@@ -275,6 +276,7 @@ const ContactCaptureScreen = () => {
               headers: {
                 'Content-Type': 'multipart/form-data',
               },
+              timeout: 30000, // 30 second timeout
             }
           );
         }
