@@ -30,12 +30,14 @@ const ContactCaptureScreen = () => {
     recordingUri: rawEditContact.recording_uri || rawEditContact.recordingUri,
     hasRecording: rawEditContact.has_recording !== undefined ? rawEditContact.has_recording : rawEditContact.hasRecording,
     photoUrl: rawEditContact.photo_url || rawEditContact.photoUrl,
+    transcript: rawEditContact.transcript,
   } : null;
 
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState(null);
   const [recordingUri, setRecordingUri] = useState(editContact?.recordingUri || null);
   const [hasRecording, setHasRecording] = useState(editContact?.hasRecording || false);
+  const [transcript, setTranscript] = useState(editContact?.transcript || null);
   const [photoUrl, setPhotoUrl] = useState(editContact?.photoUrl || null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -524,6 +526,13 @@ const ContactCaptureScreen = () => {
             <Text style={styles.recordingStatusText}>✅ Recording saved</Text>
           </View>
         )}
+
+        {transcript && (
+          <View style={styles.transcriptSection}>
+            <Text style={styles.transcriptLabel}>📝 Transcript:</Text>
+            <Text style={styles.transcriptText}>{transcript}</Text>
+          </View>
+        )}
       </View>
 
       {/* Photo Capture Section */}
@@ -687,6 +696,26 @@ const styles = StyleSheet.create({
     color: '#10b981',
     fontSize: 14,
     textAlign: 'center',
+  },
+  transcriptSection: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#6366f1',
+  },
+  transcriptLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6366f1',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  transcriptText: {
+    fontSize: 14,
+    color: '#cbd5e1',
+    lineHeight: 20,
   },
   photoSection: {
     padding: 20,
