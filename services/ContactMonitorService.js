@@ -106,9 +106,13 @@ class ContactMonitorService {
 
   async checkForNewContacts() {
     try {
+      console.log('🔍 Checking for new contacts... (isMonitoring:', this.isMonitoring, 'isInitializing:', this.isInitializing, ')');
+
       const { data: allContacts } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
       });
+
+      console.log(`📊 Total contacts on device: ${allContacts.length}, Known contacts: ${this.knownContactIds.size}`);
 
       const newContacts = [];
 
@@ -120,7 +124,7 @@ class ContactMonitorService {
       }
 
       if (newContacts.length > 0) {
-        console.log(`Found ${newContacts.length} new contact(s)`);
+        console.log(`✨ Found ${newContacts.length} new contact(s):`, newContacts.map(c => c.name || c.firstName || 'Unknown').join(', '));
         await this.saveKnownContacts();
 
         if (!this.isInitializing) {
@@ -128,11 +132,11 @@ class ContactMonitorService {
             await this.triggerContextCaptureNotification(contact);
           }
         } else {
-          console.log('📂 Skipping notifications during initial load');
+          console.log('📂 Skipping notifications during initial load (${newContacts.length} contacts added to known list)');
         }
       }
     } catch (error) {
-      console.error('Error checking for new contacts:', error);
+      console.error('❌ Error checking for new contacts:', error);
     }
   }
 
