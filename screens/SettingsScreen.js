@@ -92,11 +92,10 @@ const SettingsScreen = () => {
 
     if (value) {
       await ContactMonitorService.initialize();
-      await BackgroundTaskService.configure();
-      await BackgroundTaskService.start();
+      await BackgroundTaskService.register();
     } else {
       ContactMonitorService.stopMonitoring();
-      await BackgroundTaskService.stop();
+      await BackgroundTaskService.unregister();
     }
 
     setMonitoringEnabled(value);
