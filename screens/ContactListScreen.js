@@ -179,7 +179,7 @@ const ContactListScreen = () => {
           </View>
         </View>
 
-        {item.hasRecording && (
+        {item.has_recording && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>🎙️ Has recording</Text>
           </View>
