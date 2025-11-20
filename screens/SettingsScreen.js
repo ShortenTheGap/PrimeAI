@@ -11,8 +11,10 @@ import {
   TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import ContactMonitorService from '../services/ContactMonitorService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
+import API from '../config/api';
 
 const SettingsScreen = () => {
   const [monitoringEnabled, setMonitoringEnabled] = useState(false);
@@ -191,6 +193,33 @@ const SettingsScreen = () => {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
+      </View>
+
+      {/* API Environment Debug Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>🔧 API Configuration</Text>
+        </View>
+        <View style={styles.debugCard}>
+          <Text style={styles.debugLabel}>Environment:</Text>
+          <Text style={styles.debugValue}>{API.ENV_NAME}</Text>
+
+          <Text style={styles.debugLabel}>API URL:</Text>
+          <Text style={styles.debugValue}>{API.API_URL}</Text>
+
+          <Text style={styles.debugLabel}>Build Type:</Text>
+          <Text style={styles.debugValue}>
+            {Constants.appOwnership === 'standalone' ? 'Standalone (TestFlight/App Store)' :
+             Constants.appOwnership === 'expo' ? 'Expo Go (Development)' :
+             Constants.appOwnership || 'Unknown'}
+          </Text>
+
+          <Text style={styles.debugLabel}>Constants.appOwnership:</Text>
+          <Text style={styles.debugValue}>{Constants.appOwnership || 'null/undefined'}</Text>
+
+          <Text style={styles.debugLabel}>__DEV__ flag:</Text>
+          <Text style={styles.debugValue}>{__DEV__ ? 'true' : 'false'}</Text>
+        </View>
       </View>
 
       {/* Contact Monitoring Section */}
@@ -537,6 +566,26 @@ const styles = StyleSheet.create({
   testButtonDisabled: {
     backgroundColor: '#334155',
     opacity: 0.5,
+  },
+  debugCard: {
+    backgroundColor: '#1e293b',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  debugLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94a3b8',
+    marginTop: 8,
+    textTransform: 'uppercase',
+  },
+  debugValue: {
+    fontSize: 14,
+    color: '#10b981',
+    marginTop: 4,
+    fontFamily: 'monospace',
   },
 });
 
