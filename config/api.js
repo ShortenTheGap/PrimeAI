@@ -2,6 +2,7 @@
  * API Configuration
  * Automatically switches between local development and production
  */
+import Constants from 'expo-constants';
 
 // Determine if we're in development or production
 const ENV = {
@@ -17,14 +18,41 @@ const ENV = {
 
 // Function to get the correct environment
 const getEnvVars = () => {
-  // __DEV__ is set by React Native packager
-  // When running with 'expo start', __DEV__ is true
-  // When built for TestFlight/production, __DEV__ is false
-  if (__DEV__) {
-    return ENV.dev;
-  } else {
+  // Check if running in Expo Go (development) or standalone build (production)
+  // Constants.appOwnership:
+  // - 'expo' = running in Expo Go (development)
+  // - 'standalone' = built app (TestFlight/App Store)
+  // - null/undefined = might be in bare workflow
+
+  const isStandaloneBuild = Constants.appOwnership === 'standalone';
+  const isExpoGo = Constants.appOwnership === 'expo';
+
+  // Debug logging
+  console.log('🔍 Environment Detection:');
+  console.log('  - Constants.appOwnership:', Constants.appOwnership);
+  console.log('  - __DEV__:', __DEV__);
+  console.log('  - isStandaloneBuild:', isStandaloneBuild);
+  console.log('  - isExpoGo:', isExpoGo);
+
+  // IMPORTANT: Prioritize standalone builds over __DEV__
+  // TestFlight and App Store builds should ALWAYS use production
+  if (isStandaloneBuild) {
+    console.log('☁️ Using PRODUCTION environment (Railway) - Standalone Build');
+    console.log('  - API URL:', ENV.prod.apiUrl);
     return ENV.prod;
   }
+
+  // Only use dev environment if in Expo Go or development mode
+  if (isExpoGo || __DEV__) {
+    console.log('🔧 Using DEVELOPMENT environment (localhost)');
+    console.log('  - API URL:', ENV.dev.apiUrl);
+    return ENV.dev;
+  }
+
+  // Default to production for any other case
+  console.log('☁️ Using PRODUCTION environment (Railway) - Default');
+  console.log('  - API URL:', ENV.prod.apiUrl);
+  return ENV.prod;
 };
 
 const config = getEnvVars();

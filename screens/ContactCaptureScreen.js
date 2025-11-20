@@ -271,12 +271,20 @@ const ContactCaptureScreen = () => {
         const savedContact = response.data;
         console.log('Contact saved to cloud:', savedContact);
 
-        // NOTE: Backend handles N8N webhook automatically after processing audio
-        // No need to send webhook from mobile app anymore
+        // Build success message with webhook status
+        let successMessage = `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
+
+        if (savedContact.has_recording) {
+          if (savedContact.webhook_status === 'sent') {
+            successMessage += '\n\n🎙️ Voice note sent to N8N for processing!';
+          } else if (savedContact.webhook_status === 'not_configured') {
+            successMessage += '\n\n⚠️ Voice note saved but N8N webhook is not configured.\nConfigure N8N_WEBHOOK_URL on Railway to enable processing.';
+          }
+        }
 
         Alert.alert(
           '✅ Success!',
-          `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`,
+          successMessage,
           [
             {
               text: 'OK',

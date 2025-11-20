@@ -1,33 +1,28 @@
 {
   "expo": {
-    "name": "cnnected",
+    "name": "Context CRM",
     "slug": "context-crm",
     "version": "1.0.0",
-    "icon": "./assets/icon.png",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash.png",
       "backgroundColor": "#0f172a",
       "resizeMode": "contain"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourname.contextcrm",
-      "buildNumber": "5",
+      "buildNumber": "8",
       "infoPlist": {
         "NSContactsUsageDescription": "We need access to your contacts to notify you when you add someone new.",
         "NSMicrophoneUsageDescription": "We need microphone access to record voice notes.",
         "NSLocationWhenInUseUsageDescription": "We use your location to remember where you met contacts.",
-        "UIBackgroundModes": [
-          "audio",
-          "fetch"
-        ],
-        "ITSAppUsesNonExemptEncryption": false
+        "UIBackgroundModes": ["audio", "fetch"]
       }
     },
     "android": {
-      "package": "com.prime.contextcrm",
+      "package": "com.yourname.contextcrm",
       "permissions": [
         "READ_CONTACTS",
         "POST_NOTIFICATIONS",
