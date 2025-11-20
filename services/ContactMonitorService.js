@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Contacts from 'expo-contacts';
 import * as Notifications from 'expo-notifications';
+import { AppState } from 'react-native';
 
 const STORAGE_KEY = '@context_crm:known_contacts';
 
@@ -10,6 +11,7 @@ class ContactMonitorService {
     this.knownContactIds = new Set();
     this.checkInterval = null;
     this.isInitializing = false;
+    this.appStateSubscription = null;
   }
 
   async initialize() {
@@ -88,11 +90,22 @@ class ContactMonitorService {
 
     this.isMonitoring = true;
 
+    // Start interval checking (every 5 seconds when app is active)
     this.checkInterval = setInterval(async () => {
       await this.checkForNewContacts();
     }, 5000);
 
-    console.log('Contact monitoring started');
+    // Listen for app state changes (background <-> foreground)
+    this.appStateSubscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active') {
+        console.log('📱 App returned to foreground - checking for new contacts...');
+        await this.checkForNewContacts();
+      } else if (nextAppState === 'background') {
+        console.log('📱 App moved to background');
+      }
+    });
+
+    console.log('✅ Contact monitoring started (foreground + app state listener)');
   }
 
   stopMonitoring() {
@@ -100,6 +113,12 @@ class ContactMonitorService {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
+
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
+      this.appStateSubscription = null;
+    }
+
     this.isMonitoring = false;
     console.log('Contact monitoring stopped');
   }
