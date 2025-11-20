@@ -21,8 +21,16 @@ const ContactCaptureScreen = () => {
   const route = useRoute();
 
   const mode = route.params?.mode || 'add';
-  const editContact = route.params?.contact || null;
+  const rawEditContact = route.params?.contact || null;
   const prefilledContact = route.params?.contactData || null;
+
+  // Transform backend snake_case to camelCase
+  const editContact = rawEditContact ? {
+    ...rawEditContact,
+    recordingUri: rawEditContact.recording_uri || rawEditContact.recordingUri,
+    hasRecording: rawEditContact.has_recording !== undefined ? rawEditContact.has_recording : rawEditContact.hasRecording,
+    photoUrl: rawEditContact.photo_url || rawEditContact.photoUrl,
+  } : null;
 
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState(null);
