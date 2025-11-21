@@ -157,6 +157,11 @@ const ContactCaptureScreen = () => {
       if (hasData) {
         console.log('✅ Setting hasUnsavedChanges = true (add mode)');
         setHasUnsavedChanges(true);
+        // Reset savedSuccessfully if user is editing again
+        if (savedSuccessfully) {
+          console.log('🔄 Resetting savedSuccessfully flag - user is editing again');
+          setSavedSuccessfully(false);
+        }
       }
     } else if (mode === 'edit' && originalData) {
       // Edit mode: check if current data differs from original
@@ -183,12 +188,17 @@ const ContactCaptureScreen = () => {
       if (hasChanges) {
         console.log('✅ Setting hasUnsavedChanges = true (edit mode - data changed)');
         setHasUnsavedChanges(true);
+        // Reset savedSuccessfully if user is editing again
+        if (savedSuccessfully) {
+          console.log('🔄 Resetting savedSuccessfully flag - user is editing again');
+          setSavedSuccessfully(false);
+        }
       } else {
         console.log('ℹ️ No changes detected in edit mode');
         setHasUnsavedChanges(false);
       }
     }
-  }, [formData.name, formData.phone, formData.email, recordingUri, photoUrl, originalData]);
+  }, [formData.name, formData.phone, formData.email, recordingUri, photoUrl, originalData, savedSuccessfully]);
 
   // Update global flag when unsaved changes state changes
   useEffect(() => {
@@ -207,15 +217,19 @@ const ContactCaptureScreen = () => {
           {
             text: "Don't Leave",
             style: 'cancel',
-            onPress: () => console.log('User chose to stay')
+            onPress: () => {
+              console.log('User chose to stay');
+              // Don't change any state - let user continue editing
+            }
           },
           {
             text: 'Discard Changes',
             style: 'destructive',
             onPress: () => {
-              console.log('User chose to discard changes');
+              console.log('User chose to discard changes - resetting state and navigating');
               setHasUnsavedChanges(false);
               setSavedSuccessfully(true);
+              global.hasUnsavedContactChanges = false;
               if (onConfirm) onConfirm();
             },
           },
