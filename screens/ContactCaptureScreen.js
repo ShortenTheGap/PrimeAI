@@ -190,6 +190,44 @@ const ContactCaptureScreen = () => {
     }
   }, [formData.name, formData.phone, formData.email, recordingUri, photoUrl, originalData]);
 
+  // Update global flag when unsaved changes state changes
+  useEffect(() => {
+    global.hasUnsavedContactChanges = hasUnsavedChanges && !savedSuccessfully && !isSaving;
+    console.log('🌐 Updated global unsaved changes flag:', global.hasUnsavedContactChanges);
+  }, [hasUnsavedChanges, savedSuccessfully, isSaving]);
+
+  // Provide global function to show unsaved changes alert
+  useEffect(() => {
+    global.showUnsavedChangesAlert = (onConfirm) => {
+      console.log('🚨 Showing unsaved changes alert');
+      Alert.alert(
+        'Unsaved Changes',
+        'You have unsaved changes. Are you sure you want to leave?',
+        [
+          {
+            text: "Don't Leave",
+            style: 'cancel',
+            onPress: () => console.log('User chose to stay')
+          },
+          {
+            text: 'Discard Changes',
+            style: 'destructive',
+            onPress: () => {
+              console.log('User chose to discard changes');
+              setHasUnsavedChanges(false);
+              setSavedSuccessfully(true);
+              if (onConfirm) onConfirm();
+            },
+          },
+        ]
+      );
+    };
+
+    return () => {
+      global.showUnsavedChangesAlert = null;
+    };
+  }, []);
+
   // Handle Android hardware back button
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {

@@ -18,6 +18,10 @@ const Tab = createBottomTabNavigator();
 const App = () => {
   const navigationRef = React.useRef(null);
 
+  // Global flag to track unsaved changes in ContactCapture
+  global.hasUnsavedContactChanges = false;
+  global.showUnsavedChangesAlert = null;
+
   useEffect(() => {
     // Initialize services on app startup
     initializeApp();
@@ -124,6 +128,22 @@ const App = () => {
               <Text style={{ fontSize: 24 }}>⚙️</Text>
             ),
           }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              console.log('⚙️ Settings tab pressed, checking for unsaved changes...');
+              if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
+                console.log('⛔ Unsaved changes detected - calling alert function');
+                e.preventDefault();
+                global.showUnsavedChangesAlert(() => {
+                  console.log('✅ User confirmed - navigating to Settings');
+                  global.hasUnsavedContactChanges = false;
+                  navigation.navigate('Settings');
+                });
+              } else {
+                console.log('✅ No unsaved changes - allowing navigation to Settings');
+              }
+            },
+          })}
         />
         <Tab.Screen
           name="ContactList"
@@ -134,6 +154,22 @@ const App = () => {
               <Text style={{ fontSize: 24 }}>👥</Text>
             ),
           }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              console.log('👥 ContactList tab pressed, checking for unsaved changes...');
+              if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
+                console.log('⛔ Unsaved changes detected - calling alert function');
+                e.preventDefault();
+                global.showUnsavedChangesAlert(() => {
+                  console.log('✅ User confirmed - navigating to ContactList');
+                  global.hasUnsavedContactChanges = false;
+                  navigation.navigate('ContactList');
+                });
+              } else {
+                console.log('✅ No unsaved changes - allowing navigation to ContactList');
+              }
+            },
+          })}
         />
         <Tab.Screen
           name="ContactCapture"
