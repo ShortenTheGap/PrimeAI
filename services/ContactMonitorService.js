@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Contacts from 'expo-contacts';
 import * as Notifications from 'expo-notifications';
+import { AppState } from 'react-native';
 
 const STORAGE_KEY = '@context_crm:known_contacts';
 
@@ -10,6 +11,9 @@ class ContactMonitorService {
     this.knownContactIds = new Set();
     this.checkInterval = null;
     this.isInitializing = false;
+    this.appStateSubscription = null;
+    this.currentAppState = 'active';
+    this.navigationCallback = null;
   }
 
   async initialize() {
@@ -88,11 +92,23 @@ class ContactMonitorService {
 
     this.isMonitoring = true;
 
+    // Start interval checking (every 5 seconds when app is active)
     this.checkInterval = setInterval(async () => {
       await this.checkForNewContacts();
     }, 5000);
 
-    console.log('Contact monitoring started');
+    // Listen for app state changes (background <-> foreground)
+    this.appStateSubscription = AppState.addEventListener('change', async (nextAppState) => {
+      this.currentAppState = nextAppState;
+      if (nextAppState === 'active') {
+        console.log('📱 App returned to foreground - checking for new contacts...');
+        await this.checkForNewContacts();
+      } else if (nextAppState === 'background') {
+        console.log('📱 App moved to background');
+      }
+    });
+
+    console.log('✅ Contact monitoring started (foreground + app state listener)');
   }
 
   stopMonitoring() {
@@ -100,15 +116,25 @@ class ContactMonitorService {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
+
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
+      this.appStateSubscription = null;
+    }
+
     this.isMonitoring = false;
     console.log('Contact monitoring stopped');
   }
 
   async checkForNewContacts() {
     try {
+      console.log('🔍 Checking for new contacts... (isMonitoring:', this.isMonitoring, 'isInitializing:', this.isInitializing, ')');
+
       const { data: allContacts } = await Contacts.getContactsAsync({
         fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
       });
+
+      console.log(`📊 Total contacts on device: ${allContacts.length}, Known contacts: ${this.knownContactIds.size}`);
 
       const newContacts = [];
 
@@ -120,7 +146,7 @@ class ContactMonitorService {
       }
 
       if (newContacts.length > 0) {
-        console.log(`Found ${newContacts.length} new contact(s)`);
+        console.log(`✨ Found ${newContacts.length} new contact(s):`, newContacts.map(c => c.name || c.firstName || 'Unknown').join(', '));
         await this.saveKnownContacts();
 
         if (!this.isInitializing) {
@@ -128,12 +154,17 @@ class ContactMonitorService {
             await this.triggerContextCaptureNotification(contact);
           }
         } else {
-          console.log('📂 Skipping notifications during initial load');
+          console.log('📂 Skipping notifications during initial load (${newContacts.length} contacts added to known list)');
         }
       }
     } catch (error) {
-      console.error('Error checking for new contacts:', error);
+      console.error('❌ Error checking for new contacts:', error);
     }
+  }
+
+  setNavigationCallback(callback) {
+    this.navigationCallback = callback;
+    console.log('✅ Navigation callback registered');
   }
 
   async triggerContextCaptureNotification(contact) {
@@ -148,7 +179,15 @@ class ContactMonitorService {
       email: email,
     };
 
-    console.log('📤 Sending notification for:', JSON.stringify(contactData, null, 2));
+    // If app is in foreground, navigate directly instead of showing notification
+    if (this.currentAppState === 'active' && this.navigationCallback) {
+      console.log('🚀 App is active - auto-navigating to Contact Capture for:', displayName);
+      this.navigationCallback(contactData);
+      return;
+    }
+
+    // App is in background - send notification (existing behavior)
+    console.log('📤 App in background - sending notification for:', displayName);
 
     await Notifications.scheduleNotificationAsync({
       content: {

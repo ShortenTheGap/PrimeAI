@@ -40,7 +40,7 @@ const upload = multer({
 });
 
 // Send audio to N8N for transcription
-const sendToN8N = async (audioPath, contactData, photoUrl = null) => {
+const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = null) => {
   try {
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
@@ -56,6 +56,7 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null) => {
     // Build complete payload matching the mobile app webhook format
     const payload = {
       action: 'update',  // Update action for voice note transcription
+      contact_id: contactId,  // CRITICAL: Include contact_id so N8N can send transcript back
       contact: {
         name: contactData.name,
         phone: contactData.phone || null,
@@ -70,6 +71,7 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null) => {
 
     console.log('📤 Sending complete payload to N8N:', {
       action: payload.action,
+      contact_id: contactId,
       contact: payload.contact.name,
       hasRecording: true,
       hasPhoto: !!photoUrl,
@@ -125,31 +127,14 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
     let recording_uri = null;
     let has_recording = false;
-    let webhook_status = 'not_sent';
 
     // Handle audio file if uploaded
     if (req.file) {
       recording_uri = `/uploads/${req.file.filename}`;
       has_recording = true;
-
-      // Send to N8N for transcription (async, don't wait)
-      const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
-      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
-
-      if (n8nWebhookUrl) {
-        webhook_status = 'sent';
-        console.log('📤 Sending complete contact data to N8N webhook for processing...');
-        sendToN8N(audioPath, { name, phone, email }, photoUrl).catch(err => {
-          console.error('❌ N8N processing error:', err);
-        });
-      } else {
-        webhook_status = 'not_configured';
-        console.log('⚠️ N8N_WEBHOOK_URL not configured - skipping webhook');
-      }
-    } else {
-      console.log('ℹ️ No audio file uploaded - skipping webhook');
     }
 
+    // Create contact first to get contact_id
     const contactData = {
       name,
       phone: phone || null,
@@ -162,8 +147,27 @@ router.post('/', upload.single('audio'), async (req, res) => {
     };
 
     const newContact = await db.createContact(contactData);
-
     console.log('✅ Contact created:', newContact.contact_id);
+
+    let webhook_status = 'not_sent';
+
+    // NOW send to N8N with contact_id (async, don't wait)
+    if (req.file) {
+      const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
+      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+
+      if (n8nWebhookUrl) {
+        webhook_status = 'sent';
+        console.log('📤 Sending complete contact data to N8N webhook for processing...');
+        sendToN8N(audioPath, { name, phone, email }, photoUrl, newContact.contact_id).catch(err => {
+          console.error('❌ N8N processing error:', err);
+        });
+      } else {
+        webhook_status = 'not_configured';
+        console.log('⚠️ N8N_WEBHOOK_URL not configured - skipping webhook');
+      }
+    }
+
     res.status(201).json({
       ...newContact,
       webhook_status,
@@ -209,7 +213,7 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
 
       if (n8nWebhookUrl) {
         console.log('📤 Sending complete contact data to N8N webhook for processing (update)...');
-        sendToN8N(audioPath, { name, phone, email }, photoUrl).catch(err => {
+        sendToN8N(audioPath, { name, phone, email }, photoUrl, contactId).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {

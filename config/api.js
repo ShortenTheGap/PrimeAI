@@ -7,8 +7,10 @@ import Constants from 'expo-constants';
 // Determine if we're in development or production
 const ENV = {
   dev: {
-    apiUrl: 'http://localhost:5000',
-    name: 'Development'
+    // TEMPORARY: Point to Railway for Expo Go testing (no local server needed)
+    // Change back to 'http://localhost:5000' if you want to test with local server
+    apiUrl: 'https://primeai-production-ec82.up.railway.app',
+    name: 'Development (Railway)'
   },
   prod: {
     apiUrl: 'https://primeai-production-ec82.up.railway.app',
