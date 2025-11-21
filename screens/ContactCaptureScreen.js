@@ -17,6 +17,10 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import API from '../config/api';
 
+// Cache keys (must match ContactListScreen)
+const CACHE_KEY = '@contacts:list';
+const CACHE_TIMESTAMP_KEY = '@contacts:timestamp';
+
 const ContactCaptureScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -698,6 +702,10 @@ const ContactCaptureScreen = () => {
         setHasUnsavedChanges(false);
         global.hasUnsavedContactChanges = false;
 
+        // Invalidate contacts cache to force refresh on list screen
+        await AsyncStorage.multiRemove([CACHE_KEY, CACHE_TIMESTAMP_KEY]);
+        console.log('🗑️ Contacts cache invalidated - list will refresh from server');
+
         // Only show success alert if not skipped
         if (!skipSuccessAlert) {
           let successMessage = `Contact ${modeParam === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
@@ -872,6 +880,10 @@ const ContactCaptureScreen = () => {
         // Mark as saved successfully to prevent unsaved changes warning
         setSavedSuccessfully(true);
         setHasUnsavedChanges(false);
+
+        // Invalidate contacts cache to force refresh on list screen
+        await AsyncStorage.multiRemove([CACHE_KEY, CACHE_TIMESTAMP_KEY]);
+        console.log('🗑️ Contacts cache invalidated - list will refresh from server');
 
         // Only show success alert if not skipped (when called from warning dialog, we skip it)
         if (!skipSuccessAlert) {
