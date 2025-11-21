@@ -524,7 +524,11 @@ const ContactCaptureScreen = () => {
   };
 
     const saveContact = async (overrideRecordingUri = null) => {
-      if (!formData.name && !formData.phone) {
+      const mode = route.params?.mode || 'add';
+
+      // Validation: require at least name or phone for new contacts
+      // For edit mode, only validate if we're not just adding additional info
+      if (mode === 'add' && !formData.name && !formData.phone) {
         Alert.alert('Error', 'Please provide at least a name or phone number');
         return;
       }
@@ -532,7 +536,6 @@ const ContactCaptureScreen = () => {
       setIsSaving(true);
 
       try {
-        const mode = route.params?.mode || 'add';
         const rawContact = route.params?.contact;
 
         // Transform contact_id if needed
