@@ -227,11 +227,17 @@ const ContactCaptureScreen = () => {
           {
             text: 'Save Changes',
             onPress: async () => {
-              console.log('User chose to save changes - saving and navigating');
-              await saveContact(null, true); // Skip success alert, we'll navigate directly
-              // saveContact sets savedSuccessfully and hasUnsavedChanges
-              // Navigate immediately after save completes
-              if (onConfirm) onConfirm();
+              try {
+                console.log('🚀 User chose to save changes - starting save...');
+                await saveContact(null, true); // Skip success alert, we'll navigate directly
+                console.log('💾 Save completed successfully - navigating...');
+                // saveContact sets savedSuccessfully and hasUnsavedChanges
+                // Navigate immediately after save completes
+                if (onConfirm) onConfirm();
+              } catch (error) {
+                console.error('❌ Error in Save Changes button:', error);
+                Alert.alert('Error', 'Failed to save: ' + error.message);
+              }
             },
           },
           {
@@ -279,9 +285,15 @@ const ContactCaptureScreen = () => {
           {
             text: 'Save Changes',
             onPress: async () => {
-              console.log('User chose to save changes - saving and going back');
-              await saveContact(null, true); // Skip success alert, we'll navigate directly
-              navigation.goBack();
+              try {
+                console.log('🚀 User chose to save changes (hardware back) - starting save...');
+                await saveContact(null, true); // Skip success alert, we'll navigate directly
+                console.log('💾 Save completed - going back...');
+                navigation.goBack();
+              } catch (error) {
+                console.error('❌ Error in Save Changes (hardware back):', error);
+                Alert.alert('Error', 'Failed to save: ' + error.message);
+              }
             },
           },
           {
@@ -342,9 +354,15 @@ const ContactCaptureScreen = () => {
           {
             text: 'Save Changes',
             onPress: async () => {
-              console.log('User chose to save changes - saving and navigating');
-              await saveContact(null, true); // Skip success alert, we'll navigate directly
-              navigation.dispatch(e.data.action);
+              try {
+                console.log('🚀 User chose to save changes (beforeRemove) - starting save...');
+                await saveContact(null, true); // Skip success alert, we'll navigate directly
+                console.log('💾 Save completed - dispatching navigation...');
+                navigation.dispatch(e.data.action);
+              } catch (error) {
+                console.error('❌ Error in Save Changes (beforeRemove):', error);
+                Alert.alert('Error', 'Failed to save: ' + error.message);
+              }
             },
           },
           {
