@@ -8,6 +8,7 @@ import {
   ScrollView,
   Image,
   TextInput,
+  BackHandler,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -130,14 +131,65 @@ const ContactCaptureScreen = () => {
     }
   }, [formData.name, formData.phone, formData.email, recordingUri]);
 
-  // Warn user before leaving with unsaved changes
+  // Handle Android hardware back button
   useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      console.log('📱 Hardware back button pressed');
+
+      // If no unsaved changes, allow default behavior
+      if (!hasUnsavedChanges || savedSuccessfully || isSaving) {
+        console.log('✅ No unsaved changes - allowing back');
+        return false; // Let default behavior happen
+      }
+
+      // Show confirmation dialog
+      console.log('⛔ Unsaved changes detected - showing alert');
+      Alert.alert(
+        'Unsaved Changes',
+        'You have unsaved changes. Are you sure you want to leave?',
+        [
+          {
+            text: "Don't Leave",
+            style: 'cancel',
+            onPress: () => console.log('User chose to stay')
+          },
+          {
+            text: 'Discard Changes',
+            style: 'destructive',
+            onPress: () => {
+              console.log('User chose to discard changes');
+              navigation.goBack();
+            },
+          },
+        ]
+      );
+
+      return true; // Prevent default back behavior
+    });
+
+    console.log('✅ Hardware back button handler registered');
+
+    return () => {
+      console.log('🔧 Cleaning up hardware back handler');
+      backHandler.remove();
+    };
+  }, [hasUnsavedChanges, savedSuccessfully, isSaving, navigation]);
+
+  // Warn user before leaving with unsaved changes (for navigation buttons/gestures)
+  useEffect(() => {
+    console.log('🔧 Setting up beforeRemove listener, current state:', {
+      hasUnsavedChanges,
+      savedSuccessfully,
+      isSaving,
+    });
+
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       console.log('🚪 beforeRemove triggered:', {
         hasUnsavedChanges,
         savedSuccessfully,
         isSaving,
         willBlock: hasUnsavedChanges && !savedSuccessfully && !isSaving,
+        action: e.data.action,
       });
 
       // If saved successfully or no unsaved changes, allow navigation
@@ -155,17 +207,25 @@ const ContactCaptureScreen = () => {
         'Unsaved Changes',
         'You have unsaved changes. Are you sure you want to leave?',
         [
-          { text: "Don't Leave", style: 'cancel' },
+          { text: "Don't Leave", style: 'cancel', onPress: () => console.log('User chose to stay') },
           {
             text: 'Discard Changes',
             style: 'destructive',
-            onPress: () => navigation.dispatch(e.data.action),
+            onPress: () => {
+              console.log('User chose to discard changes');
+              navigation.dispatch(e.data.action);
+            },
           },
         ]
       );
     });
 
-    return unsubscribe;
+    console.log('✅ beforeRemove listener registered');
+
+    return () => {
+      console.log('🔧 Cleaning up beforeRemove listener');
+      unsubscribe();
+    };
   }, [navigation, hasUnsavedChanges, savedSuccessfully, isSaving]);
 
   const startRecording = async () => {
@@ -338,14 +398,23 @@ const ContactCaptureScreen = () => {
         // Use override URI if provided (for auto-save after recording), otherwise use state
         const uriToUse = overrideRecordingUri || recordingUri;
 
+        console.log('💾 Preparing to save contact:', {
+          mode,
+          hasOverrideUri: !!overrideRecordingUri,
+          hasRecordingUri: !!recordingUri,
+          uriToUse,
+          uriType: typeof uriToUse,
+        });
+
         // Prepare contact data for API
         const contactFormData = new FormData();
         contactFormData.append('name', formData.name);
         contactFormData.append('phone', formData.phone || '');
         contactFormData.append('email', formData.email || '');
 
-        // Add voice recording if exists
-        if (uriToUse) {
+        // Add voice recording if exists and is a valid string
+        if (uriToUse && typeof uriToUse === 'string' && uriToUse.length > 0) {
+          console.log('🎙️ Adding audio to upload:', uriToUse);
           const uriParts = uriToUse.split('.');
           const fileType = uriParts[uriParts.length - 1];
 
@@ -354,6 +423,10 @@ const ContactCaptureScreen = () => {
             type: `audio/${fileType}`,
             name: `voice-note.${fileType}`,
           });
+        } else if (uriToUse) {
+          console.warn('⚠️ Invalid recording URI:', { uriToUse, type: typeof uriToUse });
+        } else {
+          console.log('ℹ️ No recording to upload');
         }
 
         // Add photo URL if exists
