@@ -210,8 +210,26 @@ const ContactCaptureScreen = () => {
 
   // Provide global function to show unsaved changes alert
   useEffect(() => {
+    // Capture current values in closure so they don't get lost during navigation
+    const currentFormData = { ...formData };
+    const currentMode = route.params?.mode || 'add';
+    const currentContact = route.params?.contact;
+    const currentRecordingUri = recordingUri;
+    const currentPhotoUrl = photoUrl;
+
+    console.log('🔧 Setting up alert function with captured state:', {
+      mode: currentMode,
+      hasName: !!currentFormData.name,
+      hasPhone: !!currentFormData.phone,
+      hasEmail: !!currentFormData.email,
+    });
+
     global.showUnsavedChangesAlert = (onConfirm) => {
-      console.log('🚨 Showing unsaved changes alert');
+      console.log('🚨 Showing unsaved changes alert with captured state:', {
+        mode: currentMode,
+        formData: currentFormData,
+      });
+
       Alert.alert(
         'Unsaved Changes',
         'You have unsaved changes. What would you like to do?',
@@ -228,10 +246,19 @@ const ContactCaptureScreen = () => {
             text: 'Save Changes',
             onPress: async () => {
               try {
-                console.log('🚀 User chose to save changes - starting save...');
-                await saveContact(null, true); // Skip success alert, we'll navigate directly
+                console.log('🚀 User chose to save changes - using captured formData');
+
+                // Manually save using captured values instead of current state
+                await saveContactWithData(
+                  currentFormData,
+                  currentMode,
+                  currentContact,
+                  currentRecordingUri,
+                  currentPhotoUrl,
+                  true // skipSuccessAlert
+                );
+
                 console.log('💾 Save completed successfully - navigating...');
-                // saveContact sets savedSuccessfully and hasUnsavedChanges
                 // Navigate immediately after save completes
                 if (onConfirm) onConfirm();
               } catch (error) {
@@ -258,7 +285,7 @@ const ContactCaptureScreen = () => {
     return () => {
       global.showUnsavedChangesAlert = null;
     };
-  }, [saveContact]);
+  }, [formData, route.params, recordingUri, photoUrl]);
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -536,6 +563,184 @@ const ContactCaptureScreen = () => {
       Alert.alert('Error', 'Failed to upload photo.');
     }
   };
+
+    // Save contact using captured parameters (used by unsaved changes alert)
+    const saveContactWithData = async (
+      formDataParam,
+      modeParam,
+      contactParam,
+      recordingUriParam,
+      photoUrlParam,
+      skipSuccessAlert = false
+    ) => {
+      console.log('💾 saveContactWithData called with captured parameters:', {
+        mode: modeParam,
+        formData: formDataParam,
+        hasRecording: !!recordingUriParam,
+        hasPhoto: !!photoUrlParam,
+      });
+
+      // Validation: require at least name or phone for new contacts
+      if (modeParam === 'add' && !formDataParam.name && !formDataParam.phone) {
+        Alert.alert('Error', 'Please provide at least a name or phone number');
+        return;
+      }
+
+      setIsSaving(true);
+
+      try {
+        const contactId = contactParam?.contact_id;
+
+        console.log('💾 Preparing to save contact with captured data:', {
+          mode: modeParam,
+          hasRecordingUri: !!recordingUriParam,
+          recordingUri: recordingUriParam,
+        });
+
+        // Prepare contact data for API
+        const contactFormData = new FormData();
+
+        // Always send name (required for new contacts)
+        contactFormData.append('name', formDataParam.name);
+
+        // Only send phone/email if they have values
+        if (formDataParam.phone) {
+          contactFormData.append('phone', formDataParam.phone);
+        } else if (modeParam === 'add') {
+          contactFormData.append('phone', '');
+        }
+
+        if (formDataParam.email) {
+          contactFormData.append('email', formDataParam.email);
+        } else if (modeParam === 'add') {
+          contactFormData.append('email', '');
+        }
+
+        console.log('📝 Captured form data:', {
+          name: formDataParam.name,
+          phone: formDataParam.phone,
+          email: formDataParam.email,
+          nameLength: formDataParam.name?.length,
+          phoneLength: formDataParam.phone?.length,
+          emailLength: formDataParam.email?.length,
+        });
+
+        console.log('📤 Fields being sent to API:', {
+          name: 'ALWAYS SENT: ' + formDataParam.name,
+          phone: formDataParam.phone ? `SENT: ${formDataParam.phone}` : (modeParam === 'add' ? 'SENT: empty string' : 'NOT SENT - will preserve existing'),
+          email: formDataParam.email ? `SENT: ${formDataParam.email}` : (modeParam === 'add' ? 'SENT: empty string' : 'NOT SENT - will preserve existing'),
+          mode: modeParam,
+          contactId: contactId,
+        });
+
+        // Add voice recording if exists and is a valid string
+        if (recordingUriParam && typeof recordingUriParam === 'string' && recordingUriParam.length > 0) {
+          console.log('🎙️ Adding audio to upload:', recordingUriParam);
+          const uriParts = recordingUriParam.split('.');
+          const fileType = uriParts[uriParts.length - 1];
+
+          contactFormData.append('audio', {
+            uri: recordingUriParam,
+            type: `audio/${fileType}`,
+            name: `voice-note.${fileType}`,
+          });
+        } else if (recordingUriParam) {
+          console.warn('⚠️ Invalid recording URI:', { recordingUriParam, type: typeof recordingUriParam });
+        } else {
+          console.log('ℹ️ No recording to upload');
+        }
+
+        // Add photo URL if exists
+        if (photoUrlParam) {
+          contactFormData.append('photoUrl', photoUrlParam);
+        }
+
+        console.log(`${modeParam === 'edit' ? 'Updating' : 'Creating'} contact in cloud (${API.ENV_NAME})...`);
+
+        let response;
+        if (modeParam === 'edit' && contactId) {
+          // Update existing contact
+          response = await axios.put(
+            `${API.API_URL}/api/contacts/${contactId}`,
+            contactFormData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+              timeout: 30000, // 30 second timeout
+            }
+          );
+        } else {
+          // Create new contact
+          response = await axios.post(
+            `${API.API_URL}/api/contacts`,
+            contactFormData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+              timeout: 30000, // 30 second timeout
+            }
+          );
+        }
+
+        const savedContact = response.data;
+        console.log('✅ Contact saved to cloud:', {
+          contact_id: savedContact.contact_id,
+          name: savedContact.name,
+          has_recording: savedContact.has_recording,
+          recording_uri: savedContact.recording_uri,
+          webhook_status: savedContact.webhook_status,
+        });
+
+        // Mark as saved successfully to prevent unsaved changes warning
+        setSavedSuccessfully(true);
+        setHasUnsavedChanges(false);
+        global.hasUnsavedContactChanges = false;
+
+        // Only show success alert if not skipped
+        if (!skipSuccessAlert) {
+          let successMessage = `Contact ${modeParam === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
+
+          if (savedContact.has_recording) {
+            if (savedContact.webhook_status === 'sent') {
+              successMessage += '\n\n🎙️ Voice note sent to N8N for processing!';
+            } else if (savedContact.webhook_status === 'not_configured') {
+              successMessage += '\n\n⚠️ Voice note saved but N8N webhook is not configured.\nConfigure N8N_WEBHOOK_URL on Railway to enable processing.';
+            }
+          }
+
+          Alert.alert(
+            '✅ Success!',
+            successMessage,
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('ContactList'),
+              },
+            ]
+          );
+        } else {
+          console.log('✅ Contact saved - skipping success alert (will navigate from warning dialog)');
+        }
+      } catch (error) {
+        console.error('Error saving contact:', error);
+
+        let errorMessage = 'Failed to save contact';
+        if (error.response) {
+          errorMessage = error.response.data?.error || `Server error: ${error.response.status}`;
+        } else if (error.request) {
+          errorMessage = 'Cannot reach server. Please check your internet connection.';
+        } else {
+          errorMessage = error.message;
+        }
+
+        Alert.alert('❌ Error', errorMessage);
+        throw error; // Re-throw so the caller knows it failed
+      } finally {
+        setIsSaving(false);
+      }
+    };
 
     const saveContact = async (overrideRecordingUri = null, skipSuccessAlert = false) => {
       const mode = route.params?.mode || 'add';
