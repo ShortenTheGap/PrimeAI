@@ -17,6 +17,10 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import API from '../config/api';
 
+// Cache keys (must match ContactListScreen)
+const CACHE_KEY = '@contacts:list';
+const CACHE_TIMESTAMP_KEY = '@contacts:timestamp';
+
 const ContactCaptureScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -633,19 +637,31 @@ const ContactCaptureScreen = () => {
           contactId: contactId,
         });
 
-        // Add voice recording if exists and is a valid string
+        // Add voice recording ONLY if it's a NEW local file (not an existing server path)
+        // Local recordings start with "file://" - server paths start with "/uploads/" or "http"
         if (recordingUriParam && typeof recordingUriParam === 'string' && recordingUriParam.length > 0) {
-          console.log('🎙️ Adding audio to upload:', recordingUriParam);
-          const uriParts = recordingUriParam.split('.');
-          const fileType = uriParts[uriParts.length - 1];
+          // Check if this is a local file URI (new recording) or server path (existing recording)
+          const isLocalFile = recordingUriParam.startsWith('file://');
+          const isServerPath = recordingUriParam.startsWith('/uploads/') ||
+                              recordingUriParam.startsWith('http://') ||
+                              recordingUriParam.startsWith('https://');
 
-          contactFormData.append('audio', {
-            uri: recordingUriParam,
-            type: `audio/${fileType}`,
-            name: `voice-note.${fileType}`,
-          });
-        } else if (recordingUriParam) {
-          console.warn('⚠️ Invalid recording URI:', { recordingUriParam, type: typeof recordingUriParam });
+          if (isLocalFile) {
+            console.log('🎙️ Adding NEW audio recording to upload:', recordingUriParam);
+            const uriParts = recordingUriParam.split('.');
+            const fileType = uriParts[uriParts.length - 1];
+
+            contactFormData.append('audio', {
+              uri: recordingUriParam,
+              type: `audio/${fileType}`,
+              name: `voice-note.${fileType}`,
+            });
+          } else if (isServerPath) {
+            console.log('ℹ️ Skipping upload - recording already exists on server:', recordingUriParam);
+            // Don't upload - the recording is already on the server
+          } else {
+            console.warn('⚠️ Unknown recording URI format:', recordingUriParam);
+          }
         } else {
           console.log('ℹ️ No recording to upload');
         }
@@ -697,6 +713,10 @@ const ContactCaptureScreen = () => {
         setSavedSuccessfully(true);
         setHasUnsavedChanges(false);
         global.hasUnsavedContactChanges = false;
+
+        // Invalidate contacts cache to force refresh on list screen
+        await AsyncStorage.multiRemove([CACHE_KEY, CACHE_TIMESTAMP_KEY]);
+        console.log('🗑️ Contacts cache invalidated - list will refresh from server');
 
         // Only show success alert if not skipped
         if (!skipSuccessAlert) {
@@ -809,19 +829,31 @@ const ContactCaptureScreen = () => {
           contactId: rawContact?.contact_id,
         });
 
-        // Add voice recording if exists and is a valid string
+        // Add voice recording ONLY if it's a NEW local file (not an existing server path)
+        // Local recordings start with "file://" - server paths start with "/uploads/" or "http"
         if (uriToUse && typeof uriToUse === 'string' && uriToUse.length > 0) {
-          console.log('🎙️ Adding audio to upload:', uriToUse);
-          const uriParts = uriToUse.split('.');
-          const fileType = uriParts[uriParts.length - 1];
+          // Check if this is a local file URI (new recording) or server path (existing recording)
+          const isLocalFile = uriToUse.startsWith('file://');
+          const isServerPath = uriToUse.startsWith('/uploads/') ||
+                              uriToUse.startsWith('http://') ||
+                              uriToUse.startsWith('https://');
 
-          contactFormData.append('audio', {
-            uri: uriToUse,
-            type: `audio/${fileType}`,
-            name: `voice-note.${fileType}`,
-          });
-        } else if (uriToUse) {
-          console.warn('⚠️ Invalid recording URI:', { uriToUse, type: typeof uriToUse });
+          if (isLocalFile) {
+            console.log('🎙️ Adding NEW audio recording to upload:', uriToUse);
+            const uriParts = uriToUse.split('.');
+            const fileType = uriParts[uriParts.length - 1];
+
+            contactFormData.append('audio', {
+              uri: uriToUse,
+              type: `audio/${fileType}`,
+              name: `voice-note.${fileType}`,
+            });
+          } else if (isServerPath) {
+            console.log('ℹ️ Skipping upload - recording already exists on server:', uriToUse);
+            // Don't upload - the recording is already on the server
+          } else {
+            console.warn('⚠️ Unknown recording URI format:', uriToUse);
+          }
         } else {
           console.log('ℹ️ No recording to upload');
         }
@@ -872,6 +904,10 @@ const ContactCaptureScreen = () => {
         // Mark as saved successfully to prevent unsaved changes warning
         setSavedSuccessfully(true);
         setHasUnsavedChanges(false);
+
+        // Invalidate contacts cache to force refresh on list screen
+        await AsyncStorage.multiRemove([CACHE_KEY, CACHE_TIMESTAMP_KEY]);
+        console.log('🗑️ Contacts cache invalidated - list will refresh from server');
 
         // Only show success alert if not skipped (when called from warning dialog, we skip it)
         if (!skipSuccessAlert) {

@@ -9,11 +9,17 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import API from '../config/api';
+
+// Cache configuration
+const CACHE_KEY = '@contacts:list';
+const CACHE_TIMESTAMP_KEY = '@contacts:timestamp';
+const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
 const ContactListScreen = () => {
   const navigation = useNavigation();
@@ -21,37 +27,160 @@ const ContactListScreen = () => {
   const [filteredContacts, setFilteredContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
 
   useFocusEffect(
     React.useCallback(() => {
-      loadContacts();
+      loadContactsWithCache();
     }, [])
   );
 
-  const loadContacts = async () => {
-    setIsLoading(true);
+  // Load contacts with smart caching
+  const loadContactsWithCache = async () => {
     try {
-      console.log(`Loading contacts from cloud (${API.ENV_NAME})...`);
+      // Step 1: Load from cache first (instant display)
+      const cachedData = await loadFromCache();
+
+      if (cachedData) {
+        console.log(`📦 Loaded ${cachedData.contacts.length} contacts from cache`);
+        setContacts(cachedData.contacts);
+        setFilteredContacts(cachedData.contacts);
+        setLastSyncTime(cachedData.timestamp);
+
+        // Check if cache is stale
+        const now = Date.now();
+        const cacheAge = now - cachedData.timestamp;
+        const isStale = cacheAge > CACHE_EXPIRY_MS;
+
+        console.log(`⏰ Cache age: ${Math.round(cacheAge / 1000)}s, ${isStale ? 'STALE' : 'FRESH'}`);
+
+        // Step 2: Sync from server in background if stale
+        if (isStale) {
+          console.log('🔄 Cache is stale, syncing from server in background...');
+          await syncFromServer(false); // Background sync, no loading indicator
+        }
+      } else {
+        // No cache, fetch from server with loading indicator
+        console.log('📭 No cache found, loading from server...');
+        setIsLoading(true);
+        await syncFromServer(true);
+      }
+    } catch (error) {
+      console.error('Error loading contacts with cache:', error);
+      // Fallback to server if cache fails
+      setIsLoading(true);
+      await syncFromServer(true);
+    }
+  };
+
+  // Load contacts from cache
+  const loadFromCache = async () => {
+    try {
+      const [contactsJson, timestampStr] = await Promise.all([
+        AsyncStorage.getItem(CACHE_KEY),
+        AsyncStorage.getItem(CACHE_TIMESTAMP_KEY),
+      ]);
+
+      if (contactsJson && timestampStr) {
+        return {
+          contacts: JSON.parse(contactsJson),
+          timestamp: parseInt(timestampStr, 10),
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error reading from cache:', error);
+      return null;
+    }
+  };
+
+  // Save contacts to cache
+  const saveToCache = async (contactsList) => {
+    try {
+      const timestamp = Date.now();
+      await Promise.all([
+        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(contactsList)),
+        AsyncStorage.setItem(CACHE_TIMESTAMP_KEY, timestamp.toString()),
+      ]);
+      setLastSyncTime(timestamp);
+      console.log(`💾 Saved ${contactsList.length} contacts to cache`);
+    } catch (error) {
+      console.error('Error saving to cache:', error);
+    }
+  };
+
+  // Sync from server
+  const syncFromServer = async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
+
+    try {
+      console.log(`🌐 Syncing contacts from server (${API.ENV_NAME})...`);
       const response = await axios.get(`${API.API_URL}/api/contacts`);
       const contactsList = response.data || [];
 
-      console.log(`Loaded ${contactsList.length} contacts from cloud`);
+      console.log(`✅ Synced ${contactsList.length} contacts from server`);
       setContacts(contactsList);
       setFilteredContacts(contactsList);
-    } catch (error) {
-      console.error('Error loading contacts:', error);
 
-      let errorMessage = 'Failed to load contacts';
+      // Save to cache
+      await saveToCache(contactsList);
+
+      return contactsList;
+    } catch (error) {
+      console.error('Error syncing from server:', error);
+
+      let errorMessage = 'Failed to sync contacts';
       if (error.request) {
-        errorMessage = 'Cannot reach server. Please check your internet connection.';
+        errorMessage = 'Cannot reach server. Showing cached data.';
       }
 
-      Alert.alert('Error', errorMessage);
-      setContacts([]);
-      setFilteredContacts([]);
+      // Only show alert if we have no cached data
+      if (contacts.length === 0) {
+        Alert.alert('Error', errorMessage);
+        setContacts([]);
+        setFilteredContacts([]);
+      } else {
+        // Just log, don't interrupt user
+        console.warn('⚠️ Sync failed, using cached data');
+      }
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
+      setIsRefreshing(false);
     }
+  };
+
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await syncFromServer(false);
+  };
+
+  // Clear cache (useful for debugging or force refresh)
+  const clearCache = async () => {
+    try {
+      await AsyncStorage.multiRemove([CACHE_KEY, CACHE_TIMESTAMP_KEY]);
+      setLastSyncTime(null);
+      console.log('🗑️ Cache cleared');
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+    }
+  };
+
+  // Format last sync time
+  const formatSyncTime = (timestamp) => {
+    if (!timestamp) return '';
+    const now = Date.now();
+    const diff = Math.floor((now - timestamp) / 1000); // seconds
+
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
   };
 
   const handleSearch = (query) => {
@@ -83,8 +212,9 @@ const ContactListScreen = () => {
               console.log(`Deleting contact ${contactId} from cloud...`);
               await axios.delete(`${API.API_URL}/api/contacts/${contactId}`);
 
-              // Reload contacts from cloud
-              await loadContacts();
+              // Invalidate cache and reload from server
+              await clearCache();
+              await syncFromServer(true);
 
               Alert.alert('✅ Success', 'Contact deleted from cloud');
             } catch (error) {
@@ -216,7 +346,8 @@ const ContactListScreen = () => {
         <Text style={styles.title}>Contact List</Text>
         <View style={styles.cloudBanner}>
           <Text style={styles.cloudBannerText}>
-            ☁️ Loading from: {API.ENV_NAME}
+            ☁️ {API.ENV_NAME}
+            {lastSyncTime && ` • Last sync: ${formatSyncTime(lastSyncTime)}`}
           </Text>
         </View>
         <TextInput
@@ -245,6 +376,16 @@ const ContactListScreen = () => {
           renderItem={renderContact}
           keyExtractor={(item) => (item.contact_id || item.id || item.name).toString()}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor="#6366f1"
+              colors={["#6366f1"]}
+              title="Pull to refresh"
+              titleColor="#94a3b8"
+            />
+          }
         />
       )}
     </View>
