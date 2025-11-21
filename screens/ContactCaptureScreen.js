@@ -41,6 +41,16 @@ const ContactCaptureScreen = () => {
       const contactData = route.params?.contactData;
       const currentMode = route.params?.mode || 'add';
 
+      console.log('📋 Loading contact data:', {
+        mode: currentMode,
+        rawContact: rawContact ? {
+          name: rawContact.name,
+          has_recording: rawContact.has_recording,
+          recording_uri: rawContact.recording_uri,
+          contact_id: rawContact.contact_id,
+        } : null,
+      });
+
       // Transform backend snake_case to camelCase if needed
       const transformedContact = rawContact ? {
         ...rawContact,
@@ -49,6 +59,11 @@ const ContactCaptureScreen = () => {
         photoUrl: rawContact.photo_url || rawContact.photoUrl,
         transcript: rawContact.transcript,
       } : null;
+
+      console.log('🔄 Transformed contact:', {
+        hasRecording: transformedContact?.hasRecording,
+        recordingUri: transformedContact?.recordingUri,
+      });
 
       if (currentMode === 'edit' && transformedContact) {
         // Editing existing contact - populate with contact data
@@ -62,6 +77,11 @@ const ContactCaptureScreen = () => {
         setHasRecording(transformedContact.hasRecording || false);
         setPhotoUrl(transformedContact.photoUrl || null);
         setTranscript(transformedContact.transcript || null);
+
+        console.log('✅ Edit mode - state set:', {
+          hasRecording: transformedContact.hasRecording,
+          recordingUri: transformedContact.recordingUri,
+        });
       } else if (currentMode === 'add' && contactData) {
         // New contact from notification - populate with prefilled data
         setFormData({
@@ -371,7 +391,13 @@ const ContactCaptureScreen = () => {
         }
 
         const savedContact = response.data;
-        console.log('✅ Contact saved to cloud:', savedContact);
+        console.log('✅ Contact saved to cloud:', {
+          contact_id: savedContact.contact_id,
+          name: savedContact.name,
+          has_recording: savedContact.has_recording,
+          recording_uri: savedContact.recording_uri,
+          webhook_status: savedContact.webhook_status,
+        });
 
         // Mark as saved successfully to prevent unsaved changes warning
         setSavedSuccessfully(true);
