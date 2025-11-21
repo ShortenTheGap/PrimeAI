@@ -134,10 +134,8 @@ const ContactCaptureScreen = () => {
 
       if (currentMode === 'edit' && rawContact?.contact_id) {
         console.log('🔄 Re-recording detected - auto-saving to server...');
-        // Wait a moment for state to update, then save
-        setTimeout(() => {
-          saveContact();
-        }, 100);
+        // Pass the new URI directly to avoid state timing issues
+        saveContact(uri);
       } else {
         Alert.alert('Success', 'Recording saved! Click "Save to Cloud" when ready.');
       }
@@ -235,7 +233,7 @@ const ContactCaptureScreen = () => {
     }
   };
 
-    const saveContact = async () => {
+    const saveContact = async (overrideRecordingUri = null) => {
       if (!formData.name && !formData.phone) {
         Alert.alert('Error', 'Please provide at least a name or phone number');
         return;
@@ -250,6 +248,9 @@ const ContactCaptureScreen = () => {
         // Transform contact_id if needed
         const contactId = rawContact?.contact_id;
 
+        // Use override URI if provided (for auto-save after recording), otherwise use state
+        const uriToUse = overrideRecordingUri || recordingUri;
+
         // Prepare contact data for API
         const contactFormData = new FormData();
         contactFormData.append('name', formData.name);
@@ -257,12 +258,12 @@ const ContactCaptureScreen = () => {
         contactFormData.append('email', formData.email || '');
 
         // Add voice recording if exists
-        if (recordingUri) {
-          const uriParts = recordingUri.split('.');
+        if (uriToUse) {
+          const uriParts = uriToUse.split('.');
           const fileType = uriParts[uriParts.length - 1];
 
           contactFormData.append('audio', {
-            uri: recordingUri,
+            uri: uriToUse,
             type: `audio/${fileType}`,
             name: `voice-note.${fileType}`,
           });
