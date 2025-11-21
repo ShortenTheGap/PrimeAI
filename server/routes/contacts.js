@@ -185,38 +185,58 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
     const { name, phone, email, photoUrl } = req.body;
     const contactId = req.params.id;
 
+    console.log('🔄 PUT /api/contacts/' + contactId, {
+      hasAudioFile: !!req.file,
+      name,
+      phone,
+    });
+
     // Get existing contact
     const existingContact = await db.getContactById(contactId);
     if (!existingContact) {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
+    console.log('📋 Existing contact:', {
+      contact_id: existingContact.contact_id,
+      has_recording: existingContact.has_recording,
+      recording_uri: existingContact.recording_uri,
+    });
+
     let recording_uri = existingContact.recording_uri;
     let has_recording = existingContact.has_recording;
+    let webhook_status = 'not_sent';
 
     // Handle new audio file if uploaded
     if (req.file) {
+      console.log('🎙️ New audio file detected:', req.file.filename);
+
       // Delete old audio file if exists
       if (existingContact.recording_uri) {
         const oldPath = path.join(__dirname, '../..', existingContact.recording_uri);
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
+          console.log('🗑️ Deleted old recording:', existingContact.recording_uri);
         }
       }
 
       recording_uri = `/uploads/${req.file.filename}`;
       has_recording = true;
 
+      console.log('✅ Recording URI set to:', recording_uri);
+
       // Send to N8N for transcription (async, don't wait)
       const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
       const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
       if (n8nWebhookUrl) {
+        webhook_status = 'sent';
         console.log('📤 Sending complete contact data to N8N webhook for processing (update)...');
         sendToN8N(audioPath, { name, phone, email }, photoUrl, contactId).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {
+        webhook_status = 'not_configured';
         console.log('⚠️ N8N_WEBHOOK_URL not configured - skipping webhook');
       }
     }
@@ -232,10 +252,24 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
       analysis: existingContact.analysis
     };
 
+    console.log('💾 Updating contact with data:', {
+      contact_id: contactId,
+      has_recording,
+      recording_uri,
+    });
+
     const updatedContact = await db.updateContact(contactId, contactData);
 
-    console.log('✅ Contact updated:', contactId);
-    res.json(updatedContact);
+    console.log('✅ Contact updated successfully:', {
+      contact_id: updatedContact.contact_id,
+      has_recording: updatedContact.has_recording,
+      recording_uri: updatedContact.recording_uri,
+    });
+
+    res.json({
+      ...updatedContact,
+      webhook_status,
+    });
   } catch (error) {
     console.error('Error updating contact:', error);
     res.status(500).json({ error: error.message || 'Failed to update contact' });
