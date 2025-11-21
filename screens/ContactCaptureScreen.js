@@ -398,14 +398,23 @@ const ContactCaptureScreen = () => {
         // Use override URI if provided (for auto-save after recording), otherwise use state
         const uriToUse = overrideRecordingUri || recordingUri;
 
+        console.log('💾 Preparing to save contact:', {
+          mode,
+          hasOverrideUri: !!overrideRecordingUri,
+          hasRecordingUri: !!recordingUri,
+          uriToUse,
+          uriType: typeof uriToUse,
+        });
+
         // Prepare contact data for API
         const contactFormData = new FormData();
         contactFormData.append('name', formData.name);
         contactFormData.append('phone', formData.phone || '');
         contactFormData.append('email', formData.email || '');
 
-        // Add voice recording if exists
-        if (uriToUse) {
+        // Add voice recording if exists and is a valid string
+        if (uriToUse && typeof uriToUse === 'string' && uriToUse.length > 0) {
+          console.log('🎙️ Adding audio to upload:', uriToUse);
           const uriParts = uriToUse.split('.');
           const fileType = uriParts[uriParts.length - 1];
 
@@ -414,6 +423,10 @@ const ContactCaptureScreen = () => {
             type: `audio/${fileType}`,
             name: `voice-note.${fileType}`,
           });
+        } else if (uriToUse) {
+          console.warn('⚠️ Invalid recording URI:', { uriToUse, type: typeof uriToUse });
+        } else {
+          console.log('ℹ️ No recording to upload');
         }
 
         // Add photo URL if exists
