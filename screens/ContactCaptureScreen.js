@@ -89,6 +89,47 @@ const ContactCaptureScreen = () => {
       }
     }, [route.params]);
 
+  // Track if there are unsaved changes
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+
+  // Mark as having unsaved changes when user modifies form or adds recording
+  useEffect(() => {
+    const mode = route.params?.mode || 'add';
+    if (mode === 'add' && (formData.name || formData.phone || recordingUri)) {
+      setHasUnsavedChanges(true);
+    }
+  }, [formData, recordingUri]);
+
+  // Warn user before leaving with unsaved changes
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // If saved successfully or no unsaved changes, allow navigation
+      if (!hasUnsavedChanges || savedSuccessfully || isSaving) {
+        return;
+      }
+
+      // Prevent default navigation
+      e.preventDefault();
+
+      // Show confirmation dialog
+      Alert.alert(
+        'Unsaved Changes',
+        'You have unsaved changes. Are you sure you want to leave?',
+        [
+          { text: "Don't Leave", style: 'cancel' },
+          {
+            text: 'Discard Changes',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges, savedSuccessfully, isSaving]);
+
   const startRecording = async () => {
     try {
       const { granted } = await Audio.requestPermissionsAsync();
@@ -126,21 +167,29 @@ const ContactCaptureScreen = () => {
       setHasRecording(true);
       setRecording(null);
 
-      console.log('Recording stopped, saved to:', uri);
+      console.log('📼 Recording stopped, saved to:', uri);
 
-      // Auto-save when re-recording in edit mode
+      // Auto-save when in edit mode (including first recording on existing contact)
       const currentMode = route.params?.mode || 'add';
       const rawContact = route.params?.contact;
 
+      console.log('🔍 Checking auto-save conditions:', {
+        mode: currentMode,
+        hasContactId: !!rawContact?.contact_id,
+        contactId: rawContact?.contact_id
+      });
+
       if (currentMode === 'edit' && rawContact?.contact_id) {
-        console.log('🔄 Re-recording detected - auto-saving to server...');
+        console.log('🔄 Edit mode with contact_id detected - auto-saving to server...');
+        console.log('📤 Will upload recording URI:', uri);
         // Pass the new URI directly to avoid state timing issues
-        saveContact(uri);
+        await saveContact(uri);
       } else {
+        console.log('ℹ️ Not auto-saving - mode:', currentMode, 'contact_id:', rawContact?.contact_id);
         Alert.alert('Success', 'Recording saved! Click "Save to Cloud" when ready.');
       }
     } catch (error) {
-      console.error('Failed to stop recording:', error);
+      console.error('❌ Failed to stop recording:', error);
       Alert.alert('Error', 'Failed to stop recording');
     }
   };
@@ -304,7 +353,11 @@ const ContactCaptureScreen = () => {
         }
 
         const savedContact = response.data;
-        console.log('Contact saved to cloud:', savedContact);
+        console.log('✅ Contact saved to cloud:', savedContact);
+
+        // Mark as saved successfully to prevent unsaved changes warning
+        setSavedSuccessfully(true);
+        setHasUnsavedChanges(false);
 
         // Build success message with webhook status
         let successMessage = `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
