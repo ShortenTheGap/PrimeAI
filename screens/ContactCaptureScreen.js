@@ -96,20 +96,38 @@ const ContactCaptureScreen = () => {
   // Mark as having unsaved changes when user modifies form or adds recording
   useEffect(() => {
     const mode = route.params?.mode || 'add';
+    console.log('🔍 Unsaved changes check:', {
+      mode,
+      hasName: !!formData.name,
+      hasPhone: !!formData.phone,
+      hasRecording: !!recordingUri,
+      currentHasUnsavedChanges: hasUnsavedChanges,
+    });
+
     if (mode === 'add' && (formData.name || formData.phone || recordingUri)) {
+      console.log('✅ Setting hasUnsavedChanges = true');
       setHasUnsavedChanges(true);
     }
-  }, [formData, recordingUri]);
+  }, [formData.name, formData.phone, formData.email, recordingUri]);
 
   // Warn user before leaving with unsaved changes
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      console.log('🚪 beforeRemove triggered:', {
+        hasUnsavedChanges,
+        savedSuccessfully,
+        isSaving,
+        willBlock: hasUnsavedChanges && !savedSuccessfully && !isSaving,
+      });
+
       // If saved successfully or no unsaved changes, allow navigation
       if (!hasUnsavedChanges || savedSuccessfully || isSaving) {
+        console.log('✅ Allowing navigation');
         return;
       }
 
       // Prevent default navigation
+      console.log('⛔ Blocking navigation - showing alert');
       e.preventDefault();
 
       // Show confirmation dialog
