@@ -575,10 +575,16 @@ const ContactCaptureScreen = () => {
           contactFormData.append('email', '');
         }
 
-        console.log('📝 Form data being sent:', {
+        console.log('📝 Form data state:', {
           name: formData.name,
-          phone: formData.phone || '(not sent)',
-          email: formData.email || '(not sent)',
+          phone: formData.phone,
+          email: formData.email,
+        });
+
+        console.log('📤 Fields being sent to API:', {
+          name: 'always sent',
+          phone: formData.phone ? formData.phone : (mode === 'add' ? 'empty string' : 'NOT SENT - will use existing'),
+          email: formData.email ? formData.email : (mode === 'add' ? 'empty string' : 'NOT SENT - will use existing'),
           mode,
         });
 
