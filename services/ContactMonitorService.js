@@ -15,6 +15,7 @@ class ContactMonitorService {
     this.currentAppState = 'active';
     this.navigationCallback = null;
     this.pendingContacts = []; // Store contacts detected in background
+    this.aggressiveCheckInterval = null; // For rapid checking after foreground
   }
 
   async initialize() {
@@ -104,7 +105,7 @@ class ContactMonitorService {
       this.currentAppState = nextAppState;
 
       if (nextAppState === 'active') {
-        console.log('📱 App returned to foreground - checking for new contacts...');
+        console.log('📱 App returned to foreground - starting aggressive contact checking...');
 
         // If there are pending contacts from background detection, navigate to them now
         if (this.pendingContacts.length > 0 && this.navigationCallback) {
@@ -117,20 +118,59 @@ class ContactMonitorService {
           }
           this.pendingContacts = []; // Clear pending contacts
         } else {
-          await this.checkForNewContacts();
+          // Start aggressive checking (every 1 second for 10 seconds) to catch bump contacts
+          this.startAggressiveChecking();
         }
       } else if (nextAppState === 'background') {
         console.log('📱 App moved to background');
+        // Stop aggressive checking if it's running
+        this.stopAggressiveChecking();
       }
     });
 
     console.log('✅ Contact monitoring started (foreground + app state listener)');
   }
 
+  startAggressiveChecking() {
+    console.log('🔥 Starting aggressive contact checking (1s intervals for 10s)');
+    let checkCount = 0;
+    const maxChecks = 10;
+
+    // Stop any existing aggressive checking
+    this.stopAggressiveChecking();
+
+    // Immediate check
+    this.checkForNewContacts();
+
+    // Then check every second for 10 seconds
+    this.aggressiveCheckInterval = setInterval(async () => {
+      checkCount++;
+      console.log(`🔍 Aggressive check ${checkCount}/${maxChecks}`);
+      await this.checkForNewContacts();
+
+      if (checkCount >= maxChecks) {
+        this.stopAggressiveChecking();
+        console.log('✅ Aggressive checking complete - back to normal 5s interval');
+      }
+    }, 1000);
+  }
+
+  stopAggressiveChecking() {
+    if (this.aggressiveCheckInterval) {
+      clearInterval(this.aggressiveCheckInterval);
+      this.aggressiveCheckInterval = null;
+    }
+  }
+
   stopMonitoring() {
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
+    }
+
+    if (this.aggressiveCheckInterval) {
+      clearInterval(this.aggressiveCheckInterval);
+      this.aggressiveCheckInterval = null;
     }
 
     if (this.appStateSubscription) {
@@ -202,14 +242,14 @@ class ContactMonitorService {
       return;
     }
 
-    // App is in background - store for later navigation and send notification
-    console.log('📤 App in background - storing contact and sending notification for:', displayName);
+    // App is in background - send notification to remind user + store for auto-navigation
+    console.log('📤 App in background - sending notification and storing contact:', displayName);
     this.pendingContacts.push(contactData);
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '🎙️ Add Context?',
-        body: `You just added ${displayName}. Capture context while it's fresh!`,
+        title: '🎙️ Add Context Now!',
+        body: `You just added ${displayName}. Tap to capture context while it's fresh!`,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
         data: {
