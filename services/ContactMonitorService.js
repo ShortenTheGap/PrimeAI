@@ -14,6 +14,7 @@ class ContactMonitorService {
     this.appStateSubscription = null;
     this.currentAppState = 'active';
     this.navigationCallback = null;
+    this.pendingContacts = []; // Store contacts detected in background
   }
 
   async initialize() {
@@ -99,10 +100,25 @@ class ContactMonitorService {
 
     // Listen for app state changes (background <-> foreground)
     this.appStateSubscription = AppState.addEventListener('change', async (nextAppState) => {
+      const previousState = this.currentAppState;
       this.currentAppState = nextAppState;
+
       if (nextAppState === 'active') {
         console.log('📱 App returned to foreground - checking for new contacts...');
-        await this.checkForNewContacts();
+
+        // If there are pending contacts from background detection, navigate to them now
+        if (this.pendingContacts.length > 0 && this.navigationCallback) {
+          console.log(`🚀 Found ${this.pendingContacts.length} pending contact(s) - navigating now...`);
+          for (const contactData of this.pendingContacts) {
+            console.log('🔄 Auto-navigating to Contact Capture for:', contactData.name);
+            this.navigationCallback(contactData);
+            // Only navigate to the first one to avoid multiple screens
+            break;
+          }
+          this.pendingContacts = []; // Clear pending contacts
+        } else {
+          await this.checkForNewContacts();
+        }
       } else if (nextAppState === 'background') {
         console.log('📱 App moved to background');
       }
@@ -179,15 +195,16 @@ class ContactMonitorService {
       email: email,
     };
 
-    // If app is in foreground, navigate directly instead of showing notification
+    // If app is in foreground, navigate directly
     if (this.currentAppState === 'active' && this.navigationCallback) {
       console.log('🚀 App is active - auto-navigating to Contact Capture for:', displayName);
       this.navigationCallback(contactData);
       return;
     }
 
-    // App is in background - send notification (existing behavior)
-    console.log('📤 App in background - sending notification for:', displayName);
+    // App is in background - store for later navigation and send notification
+    console.log('📤 App in background - storing contact and sending notification for:', displayName);
+    this.pendingContacts.push(contactData);
 
     await Notifications.scheduleNotificationAsync({
       content: {
