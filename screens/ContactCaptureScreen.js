@@ -212,7 +212,7 @@ const ContactCaptureScreen = () => {
       console.log('🚨 Showing unsaved changes alert');
       Alert.alert(
         'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to leave?',
+        'You have unsaved changes. What would you like to do?',
         [
           {
             text: "Don't Leave",
@@ -221,6 +221,18 @@ const ContactCaptureScreen = () => {
               console.log('User chose to stay');
               // Don't change any state - let user continue editing
             }
+          },
+          {
+            text: 'Save Changes',
+            onPress: async () => {
+              console.log('User chose to save changes - saving and navigating');
+              await saveContact();
+              // saveContact sets savedSuccessfully and hasUnsavedChanges
+              // Then navigate after save completes
+              setTimeout(() => {
+                if (onConfirm) onConfirm();
+              }, 500);
+            },
           },
           {
             text: 'Discard Changes',
@@ -240,7 +252,7 @@ const ContactCaptureScreen = () => {
     return () => {
       global.showUnsavedChangesAlert = null;
     };
-  }, [setHasUnsavedChanges, setSavedSuccessfully]);
+  }, [saveContact]);
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -257,12 +269,22 @@ const ContactCaptureScreen = () => {
       console.log('⛔ Unsaved changes detected - showing alert');
       Alert.alert(
         'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to leave?',
+        'You have unsaved changes. What would you like to do?',
         [
           {
             text: "Don't Leave",
             style: 'cancel',
             onPress: () => console.log('User chose to stay')
+          },
+          {
+            text: 'Save Changes',
+            onPress: async () => {
+              console.log('User chose to save changes - saving and going back');
+              await saveContact();
+              setTimeout(() => {
+                navigation.goBack();
+              }, 500);
+            },
           },
           {
             text: 'Discard Changes',
@@ -316,9 +338,19 @@ const ContactCaptureScreen = () => {
       // Show confirmation dialog
       Alert.alert(
         'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to leave?',
+        'You have unsaved changes. What would you like to do?',
         [
           { text: "Don't Leave", style: 'cancel', onPress: () => console.log('User chose to stay') },
+          {
+            text: 'Save Changes',
+            onPress: async () => {
+              console.log('User chose to save changes - saving and navigating');
+              await saveContact();
+              setTimeout(() => {
+                navigation.dispatch(e.data.action);
+              }, 500);
+            },
+          },
           {
             text: 'Discard Changes',
             style: 'destructive',
