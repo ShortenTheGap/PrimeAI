@@ -18,6 +18,10 @@ const Tab = createBottomTabNavigator();
 const App = () => {
   const navigationRef = React.useRef(null);
 
+  // Global flag to track unsaved changes in ContactCapture
+  global.hasUnsavedContactChanges = false;
+  global.showUnsavedChangesAlert = null;
+
   useEffect(() => {
     // Initialize services on app startup
     initializeApp();
@@ -124,6 +128,33 @@ const App = () => {
               <Text style={{ fontSize: 24 }}>⚙️</Text>
             ),
           }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              console.log('⚙️ Settings tab pressed, checking for unsaved changes...');
+              console.log('📊 Global state:', {
+                hasUnsavedContactChanges: global.hasUnsavedContactChanges,
+                hasAlertFunction: !!global.showUnsavedChangesAlert,
+              });
+
+              if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
+                console.log('⛔ Unsaved changes detected - calling alert function');
+                e.preventDefault();
+                global.showUnsavedChangesAlert(() => {
+                  console.log('✅ User confirmed - navigating to Settings');
+                  global.hasUnsavedContactChanges = false;
+                  navigation.navigate('Settings');
+                });
+              } else {
+                console.log('✅ No unsaved changes - allowing navigation to Settings');
+                if (!global.hasUnsavedContactChanges) {
+                  console.log('  - Reason: hasUnsavedContactChanges is false');
+                }
+                if (!global.showUnsavedChangesAlert) {
+                  console.log('  - Reason: showUnsavedChangesAlert function not set');
+                }
+              }
+            },
+          })}
         />
         <Tab.Screen
           name="ContactList"
@@ -134,6 +165,33 @@ const App = () => {
               <Text style={{ fontSize: 24 }}>👥</Text>
             ),
           }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              console.log('👥 ContactList tab pressed, checking for unsaved changes...');
+              console.log('📊 Global state:', {
+                hasUnsavedContactChanges: global.hasUnsavedContactChanges,
+                hasAlertFunction: !!global.showUnsavedChangesAlert,
+              });
+
+              if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
+                console.log('⛔ Unsaved changes detected - calling alert function');
+                e.preventDefault();
+                global.showUnsavedChangesAlert(() => {
+                  console.log('✅ User confirmed - navigating to ContactList');
+                  global.hasUnsavedContactChanges = false;
+                  navigation.navigate('ContactList');
+                });
+              } else {
+                console.log('✅ No unsaved changes - allowing navigation to ContactList');
+                if (!global.hasUnsavedContactChanges) {
+                  console.log('  - Reason: hasUnsavedContactChanges is false');
+                }
+                if (!global.showUnsavedChangesAlert) {
+                  console.log('  - Reason: showUnsavedChangesAlert function not set');
+                }
+              }
+            },
+          })}
         />
         <Tab.Screen
           name="ContactCapture"
