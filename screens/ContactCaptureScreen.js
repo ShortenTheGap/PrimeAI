@@ -46,6 +46,8 @@ const ContactCaptureScreen = () => {
         mode: currentMode,
         rawContact: rawContact ? {
           name: rawContact.name,
+          phone: rawContact.phone,
+          email: rawContact.email,
           has_recording: rawContact.has_recording,
           recording_uri: rawContact.recording_uri,
           contact_id: rawContact.contact_id,
@@ -113,23 +115,177 @@ const ContactCaptureScreen = () => {
   // Track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+  const [originalData, setOriginalData] = useState(null);
+
+  // Store original data when loading contact
+  useEffect(() => {
+    const rawContact = route.params?.contact;
+    const currentMode = route.params?.mode || 'add';
+
+    if (currentMode === 'edit' && rawContact) {
+      setOriginalData({
+        name: rawContact.name || '',
+        phone: rawContact.phone || '',
+        email: rawContact.email || '',
+        recordingUri: rawContact.recording_uri || rawContact.recordingUri || null,
+        photoUrl: rawContact.photo_url || rawContact.photoUrl || null,
+      });
+      console.log('📝 Stored original data for edit mode:', {
+        name: rawContact.name,
+        phone: rawContact.phone,
+        email: rawContact.email,
+      });
+    } else {
+      setOriginalData(null);
+    }
+  }, [route.params]);
 
   // Mark as having unsaved changes when user modifies form or adds recording
   useEffect(() => {
     const mode = route.params?.mode || 'add';
-    console.log('🔍 Unsaved changes check:', {
-      mode,
-      hasName: !!formData.name,
-      hasPhone: !!formData.phone,
-      hasRecording: !!recordingUri,
-      currentHasUnsavedChanges: hasUnsavedChanges,
+
+    if (mode === 'add') {
+      // Add mode: any data means unsaved changes
+      const hasData = formData.name || formData.phone || formData.email || recordingUri;
+      console.log('🔍 Unsaved changes check (add mode):', {
+        mode,
+        hasName: !!formData.name,
+        hasPhone: !!formData.phone,
+        hasEmail: !!formData.email,
+        hasRecording: !!recordingUri,
+        willSetUnsaved: !!hasData,
+      });
+
+      if (hasData) {
+        console.log('✅ Setting hasUnsavedChanges = true (add mode)');
+        setHasUnsavedChanges(true);
+        // Reset savedSuccessfully if user is editing again
+        if (savedSuccessfully) {
+          console.log('🔄 Resetting savedSuccessfully flag - user is editing again');
+          setSavedSuccessfully(false);
+        }
+      }
+    } else if (mode === 'edit' && originalData) {
+      // Edit mode: check if current data differs from original
+      const nameChanged = formData.name !== originalData.name;
+      const phoneChanged = formData.phone !== originalData.phone;
+      const emailChanged = formData.email !== originalData.email;
+      const recordingChanged = recordingUri !== originalData.recordingUri;
+      const photoChanged = photoUrl !== originalData.photoUrl;
+
+      const hasChanges = nameChanged || phoneChanged || emailChanged || recordingChanged || photoChanged;
+
+      console.log('🔍 Unsaved changes check (edit mode):', {
+        mode,
+        nameChanged,
+        phoneChanged,
+        emailChanged,
+        recordingChanged,
+        photoChanged,
+        hasChanges,
+        current: { name: formData.name, phone: formData.phone, email: formData.email },
+        original: { name: originalData.name, phone: originalData.phone, email: originalData.email },
+      });
+
+      if (hasChanges) {
+        console.log('✅ Setting hasUnsavedChanges = true (edit mode - data changed)');
+        setHasUnsavedChanges(true);
+        // Reset savedSuccessfully if user is editing again
+        if (savedSuccessfully) {
+          console.log('🔄 Resetting savedSuccessfully flag - user is editing again');
+          setSavedSuccessfully(false);
+        }
+      } else {
+        console.log('ℹ️ No changes detected in edit mode');
+        setHasUnsavedChanges(false);
+      }
+    }
+  }, [formData.name, formData.phone, formData.email, recordingUri, photoUrl, originalData, savedSuccessfully]);
+
+  // Update global flag when unsaved changes state changes
+  useEffect(() => {
+    global.hasUnsavedContactChanges = hasUnsavedChanges && !savedSuccessfully && !isSaving;
+    console.log('🌐 Updated global unsaved changes flag:', global.hasUnsavedContactChanges);
+  }, [hasUnsavedChanges, savedSuccessfully, isSaving]);
+
+  // Provide global function to show unsaved changes alert
+  useEffect(() => {
+    // Capture current values in closure so they don't get lost during navigation
+    const currentFormData = { ...formData };
+    const currentMode = route.params?.mode || 'add';
+    const currentContact = route.params?.contact;
+    const currentRecordingUri = recordingUri;
+    const currentPhotoUrl = photoUrl;
+
+    console.log('🔧 Setting up alert function with captured state:', {
+      mode: currentMode,
+      hasName: !!currentFormData.name,
+      hasPhone: !!currentFormData.phone,
+      hasEmail: !!currentFormData.email,
     });
 
-    if (mode === 'add' && (formData.name || formData.phone || recordingUri)) {
-      console.log('✅ Setting hasUnsavedChanges = true');
-      setHasUnsavedChanges(true);
-    }
-  }, [formData.name, formData.phone, formData.email, recordingUri]);
+    global.showUnsavedChangesAlert = (onConfirm) => {
+      console.log('🚨 Showing unsaved changes alert with captured state:', {
+        mode: currentMode,
+        formData: currentFormData,
+      });
+
+      Alert.alert(
+        'Unsaved Changes',
+        'You have unsaved changes. What would you like to do?',
+        [
+          {
+            text: "Don't Leave",
+            style: 'cancel',
+            onPress: () => {
+              console.log('User chose to stay');
+              // Don't change any state - let user continue editing
+            }
+          },
+          {
+            text: 'Save Changes',
+            onPress: async () => {
+              try {
+                console.log('🚀 User chose to save changes - using captured formData');
+
+                // Manually save using captured values instead of current state
+                await saveContactWithData(
+                  currentFormData,
+                  currentMode,
+                  currentContact,
+                  currentRecordingUri,
+                  currentPhotoUrl,
+                  true // skipSuccessAlert
+                );
+
+                console.log('💾 Save completed successfully - navigating...');
+                // Navigate immediately after save completes
+                if (onConfirm) onConfirm();
+              } catch (error) {
+                console.error('❌ Error in Save Changes button:', error);
+                Alert.alert('Error', 'Failed to save: ' + error.message);
+              }
+            },
+          },
+          {
+            text: 'Discard Changes',
+            style: 'destructive',
+            onPress: () => {
+              console.log('User chose to discard changes - resetting state and navigating');
+              setHasUnsavedChanges(false);
+              setSavedSuccessfully(true);
+              global.hasUnsavedContactChanges = false;
+              if (onConfirm) onConfirm();
+            },
+          },
+        ]
+      );
+    };
+
+    return () => {
+      global.showUnsavedChangesAlert = null;
+    };
+  }, [formData, route.params, recordingUri, photoUrl]);
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -146,12 +302,26 @@ const ContactCaptureScreen = () => {
       console.log('⛔ Unsaved changes detected - showing alert');
       Alert.alert(
         'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to leave?',
+        'You have unsaved changes. What would you like to do?',
         [
           {
             text: "Don't Leave",
             style: 'cancel',
             onPress: () => console.log('User chose to stay')
+          },
+          {
+            text: 'Save Changes',
+            onPress: async () => {
+              try {
+                console.log('🚀 User chose to save changes (hardware back) - starting save...');
+                await saveContact(null, true); // Skip success alert, we'll navigate directly
+                console.log('💾 Save completed - going back...');
+                navigation.goBack();
+              } catch (error) {
+                console.error('❌ Error in Save Changes (hardware back):', error);
+                Alert.alert('Error', 'Failed to save: ' + error.message);
+              }
+            },
           },
           {
             text: 'Discard Changes',
@@ -205,9 +375,23 @@ const ContactCaptureScreen = () => {
       // Show confirmation dialog
       Alert.alert(
         'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to leave?',
+        'You have unsaved changes. What would you like to do?',
         [
           { text: "Don't Leave", style: 'cancel', onPress: () => console.log('User chose to stay') },
+          {
+            text: 'Save Changes',
+            onPress: async () => {
+              try {
+                console.log('🚀 User chose to save changes (beforeRemove) - starting save...');
+                await saveContact(null, true); // Skip success alert, we'll navigate directly
+                console.log('💾 Save completed - dispatching navigation...');
+                navigation.dispatch(e.data.action);
+              } catch (error) {
+                console.error('❌ Error in Save Changes (beforeRemove):', error);
+                Alert.alert('Error', 'Failed to save: ' + error.message);
+              }
+            },
+          },
           {
             text: 'Discard Changes',
             style: 'destructive',
@@ -380,8 +564,24 @@ const ContactCaptureScreen = () => {
     }
   };
 
-    const saveContact = async (overrideRecordingUri = null) => {
-      if (!formData.name && !formData.phone) {
+    // Save contact using captured parameters (used by unsaved changes alert)
+    const saveContactWithData = async (
+      formDataParam,
+      modeParam,
+      contactParam,
+      recordingUriParam,
+      photoUrlParam,
+      skipSuccessAlert = false
+    ) => {
+      console.log('💾 saveContactWithData called with captured parameters:', {
+        mode: modeParam,
+        formData: formDataParam,
+        hasRecording: !!recordingUriParam,
+        hasPhoto: !!photoUrlParam,
+      });
+
+      // Validation: require at least name or phone for new contacts
+      if (modeParam === 'add' && !formDataParam.name && !formDataParam.phone) {
         Alert.alert('Error', 'Please provide at least a name or phone number');
         return;
       }
@@ -389,7 +589,172 @@ const ContactCaptureScreen = () => {
       setIsSaving(true);
 
       try {
-        const mode = route.params?.mode || 'add';
+        const contactId = contactParam?.contact_id;
+
+        console.log('💾 Preparing to save contact with captured data:', {
+          mode: modeParam,
+          hasRecordingUri: !!recordingUriParam,
+          recordingUri: recordingUriParam,
+        });
+
+        // Prepare contact data for API
+        const contactFormData = new FormData();
+
+        // Always send name (required for new contacts)
+        contactFormData.append('name', formDataParam.name);
+
+        // Only send phone/email if they have values
+        if (formDataParam.phone) {
+          contactFormData.append('phone', formDataParam.phone);
+        } else if (modeParam === 'add') {
+          contactFormData.append('phone', '');
+        }
+
+        if (formDataParam.email) {
+          contactFormData.append('email', formDataParam.email);
+        } else if (modeParam === 'add') {
+          contactFormData.append('email', '');
+        }
+
+        console.log('📝 Captured form data:', {
+          name: formDataParam.name,
+          phone: formDataParam.phone,
+          email: formDataParam.email,
+          nameLength: formDataParam.name?.length,
+          phoneLength: formDataParam.phone?.length,
+          emailLength: formDataParam.email?.length,
+        });
+
+        console.log('📤 Fields being sent to API:', {
+          name: 'ALWAYS SENT: ' + formDataParam.name,
+          phone: formDataParam.phone ? `SENT: ${formDataParam.phone}` : (modeParam === 'add' ? 'SENT: empty string' : 'NOT SENT - will preserve existing'),
+          email: formDataParam.email ? `SENT: ${formDataParam.email}` : (modeParam === 'add' ? 'SENT: empty string' : 'NOT SENT - will preserve existing'),
+          mode: modeParam,
+          contactId: contactId,
+        });
+
+        // Add voice recording if exists and is a valid string
+        if (recordingUriParam && typeof recordingUriParam === 'string' && recordingUriParam.length > 0) {
+          console.log('🎙️ Adding audio to upload:', recordingUriParam);
+          const uriParts = recordingUriParam.split('.');
+          const fileType = uriParts[uriParts.length - 1];
+
+          contactFormData.append('audio', {
+            uri: recordingUriParam,
+            type: `audio/${fileType}`,
+            name: `voice-note.${fileType}`,
+          });
+        } else if (recordingUriParam) {
+          console.warn('⚠️ Invalid recording URI:', { recordingUriParam, type: typeof recordingUriParam });
+        } else {
+          console.log('ℹ️ No recording to upload');
+        }
+
+        // Add photo URL if exists
+        if (photoUrlParam) {
+          contactFormData.append('photoUrl', photoUrlParam);
+        }
+
+        console.log(`${modeParam === 'edit' ? 'Updating' : 'Creating'} contact in cloud (${API.ENV_NAME})...`);
+
+        let response;
+        if (modeParam === 'edit' && contactId) {
+          // Update existing contact
+          response = await axios.put(
+            `${API.API_URL}/api/contacts/${contactId}`,
+            contactFormData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+              timeout: 30000, // 30 second timeout
+            }
+          );
+        } else {
+          // Create new contact
+          response = await axios.post(
+            `${API.API_URL}/api/contacts`,
+            contactFormData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+              timeout: 30000, // 30 second timeout
+            }
+          );
+        }
+
+        const savedContact = response.data;
+        console.log('✅ Contact saved to cloud:', {
+          contact_id: savedContact.contact_id,
+          name: savedContact.name,
+          has_recording: savedContact.has_recording,
+          recording_uri: savedContact.recording_uri,
+          webhook_status: savedContact.webhook_status,
+        });
+
+        // Mark as saved successfully to prevent unsaved changes warning
+        setSavedSuccessfully(true);
+        setHasUnsavedChanges(false);
+        global.hasUnsavedContactChanges = false;
+
+        // Only show success alert if not skipped
+        if (!skipSuccessAlert) {
+          let successMessage = `Contact ${modeParam === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
+
+          if (savedContact.has_recording) {
+            if (savedContact.webhook_status === 'sent') {
+              successMessage += '\n\n🎙️ Voice note sent to N8N for processing!';
+            } else if (savedContact.webhook_status === 'not_configured') {
+              successMessage += '\n\n⚠️ Voice note saved but N8N webhook is not configured.\nConfigure N8N_WEBHOOK_URL on Railway to enable processing.';
+            }
+          }
+
+          Alert.alert(
+            '✅ Success!',
+            successMessage,
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('ContactList'),
+              },
+            ]
+          );
+        } else {
+          console.log('✅ Contact saved - skipping success alert (will navigate from warning dialog)');
+        }
+      } catch (error) {
+        console.error('Error saving contact:', error);
+
+        let errorMessage = 'Failed to save contact';
+        if (error.response) {
+          errorMessage = error.response.data?.error || `Server error: ${error.response.status}`;
+        } else if (error.request) {
+          errorMessage = 'Cannot reach server. Please check your internet connection.';
+        } else {
+          errorMessage = error.message;
+        }
+
+        Alert.alert('❌ Error', errorMessage);
+        throw error; // Re-throw so the caller knows it failed
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    const saveContact = async (overrideRecordingUri = null, skipSuccessAlert = false) => {
+      const mode = route.params?.mode || 'add';
+
+      // Validation: require at least name or phone for new contacts
+      // For edit mode, only validate if we're not just adding additional info
+      if (mode === 'add' && !formData.name && !formData.phone) {
+        Alert.alert('Error', 'Please provide at least a name or phone number');
+        return;
+      }
+
+      setIsSaving(true);
+
+      try {
         const rawContact = route.params?.contact;
 
         // Transform contact_id if needed
@@ -408,9 +773,41 @@ const ContactCaptureScreen = () => {
 
         // Prepare contact data for API
         const contactFormData = new FormData();
+
+        // Always send name (required for new contacts)
         contactFormData.append('name', formData.name);
-        contactFormData.append('phone', formData.phone || '');
-        contactFormData.append('email', formData.email || '');
+
+        // Only send phone/email if they have values (to avoid overwriting with empty strings)
+        if (formData.phone) {
+          contactFormData.append('phone', formData.phone);
+        } else if (mode === 'add') {
+          // For add mode, send empty string if no phone
+          contactFormData.append('phone', '');
+        }
+
+        if (formData.email) {
+          contactFormData.append('email', formData.email);
+        } else if (mode === 'add') {
+          // For add mode, send empty string if no email
+          contactFormData.append('email', '');
+        }
+
+        console.log('📝 Form data state:', {
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email,
+          nameLength: formData.name?.length,
+          phoneLength: formData.phone?.length,
+          emailLength: formData.email?.length,
+        });
+
+        console.log('📤 Fields being sent to API:', {
+          name: 'ALWAYS SENT: ' + formData.name,
+          phone: formData.phone ? `SENT: ${formData.phone}` : (mode === 'add' ? 'SENT: empty string' : 'NOT SENT - will preserve existing'),
+          email: formData.email ? `SENT: ${formData.email}` : (mode === 'add' ? 'SENT: empty string' : 'NOT SENT - will preserve existing'),
+          mode,
+          contactId: rawContact?.contact_id,
+        });
 
         // Add voice recording if exists and is a valid string
         if (uriToUse && typeof uriToUse === 'string' && uriToUse.length > 0) {
@@ -476,27 +873,32 @@ const ContactCaptureScreen = () => {
         setSavedSuccessfully(true);
         setHasUnsavedChanges(false);
 
-        // Build success message with webhook status
-        let successMessage = `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
+        // Only show success alert if not skipped (when called from warning dialog, we skip it)
+        if (!skipSuccessAlert) {
+          // Build success message with webhook status
+          let successMessage = `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
 
-        if (savedContact.has_recording) {
-          if (savedContact.webhook_status === 'sent') {
-            successMessage += '\n\n🎙️ Voice note sent to N8N for processing!';
-          } else if (savedContact.webhook_status === 'not_configured') {
-            successMessage += '\n\n⚠️ Voice note saved but N8N webhook is not configured.\nConfigure N8N_WEBHOOK_URL on Railway to enable processing.';
+          if (savedContact.has_recording) {
+            if (savedContact.webhook_status === 'sent') {
+              successMessage += '\n\n🎙️ Voice note sent to N8N for processing!';
+            } else if (savedContact.webhook_status === 'not_configured') {
+              successMessage += '\n\n⚠️ Voice note saved but N8N webhook is not configured.\nConfigure N8N_WEBHOOK_URL on Railway to enable processing.';
+            }
           }
-        }
 
-        Alert.alert(
-          '✅ Success!',
-          successMessage,
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('ContactList'),
-            },
-          ]
-        );
+          Alert.alert(
+            '✅ Success!',
+            successMessage,
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('ContactList'),
+              },
+            ]
+          );
+        } else {
+          console.log('✅ Contact saved - skipping success alert (will navigate from warning dialog)');
+        }
       } catch (error) {
         console.error('Error saving contact:', error);
 
