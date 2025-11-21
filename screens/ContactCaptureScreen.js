@@ -1076,6 +1076,30 @@ const ContactCaptureScreen = () => {
     }
   };
 
+  // Cleanup: Clear global flags when screen loses focus or unmounts
+  useEffect(() => {
+    console.log('📍 ContactCaptureScreen mounted');
+
+    // Subscribe to navigation focus events
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      console.log('👋 ContactCaptureScreen lost focus - cleaning up global flags');
+      // Clear flags immediately when leaving the screen
+      // Only keep them if there are actual unsaved changes
+      if (!hasUnsavedChanges) {
+        global.hasUnsavedContactChanges = false;
+        global.showUnsavedChangesAlert = null;
+      }
+    });
+
+    return () => {
+      console.log('🧹 ContactCaptureScreen unmounting - final cleanup');
+      unsubscribeBlur();
+      // Force clear on unmount regardless
+      global.hasUnsavedContactChanges = false;
+      global.showUnsavedChangesAlert = null;
+    };
+  }, [hasUnsavedChanges, navigation]);
+
   const mode = route.params?.mode || 'add';
   const prefilledContact = route.params?.contactData;
 
