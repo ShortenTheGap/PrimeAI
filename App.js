@@ -131,6 +131,11 @@ const App = () => {
           listeners={({ navigation }) => ({
             tabPress: (e) => {
               console.log('⚙️ Settings tab pressed, checking for unsaved changes...');
+              console.log('📊 Global state:', {
+                hasUnsavedContactChanges: global.hasUnsavedContactChanges,
+                hasAlertFunction: !!global.showUnsavedChangesAlert,
+              });
+
               if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
                 console.log('⛔ Unsaved changes detected - calling alert function');
                 e.preventDefault();
@@ -141,6 +146,12 @@ const App = () => {
                 });
               } else {
                 console.log('✅ No unsaved changes - allowing navigation to Settings');
+                if (!global.hasUnsavedContactChanges) {
+                  console.log('  - Reason: hasUnsavedContactChanges is false');
+                }
+                if (!global.showUnsavedChangesAlert) {
+                  console.log('  - Reason: showUnsavedChangesAlert function not set');
+                }
               }
             },
           })}
@@ -157,6 +168,11 @@ const App = () => {
           listeners={({ navigation }) => ({
             tabPress: (e) => {
               console.log('👥 ContactList tab pressed, checking for unsaved changes...');
+              console.log('📊 Global state:', {
+                hasUnsavedContactChanges: global.hasUnsavedContactChanges,
+                hasAlertFunction: !!global.showUnsavedChangesAlert,
+              });
+
               if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
                 console.log('⛔ Unsaved changes detected - calling alert function');
                 e.preventDefault();
@@ -167,6 +183,12 @@ const App = () => {
                 });
               } else {
                 console.log('✅ No unsaved changes - allowing navigation to ContactList');
+                if (!global.hasUnsavedContactChanges) {
+                  console.log('  - Reason: hasUnsavedContactChanges is false');
+                }
+                if (!global.showUnsavedChangesAlert) {
+                  console.log('  - Reason: showUnsavedChangesAlert function not set');
+                }
               }
             },
           })}

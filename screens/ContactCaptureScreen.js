@@ -226,7 +226,7 @@ const ContactCaptureScreen = () => {
     return () => {
       global.showUnsavedChangesAlert = null;
     };
-  }, []);
+  }, [setHasUnsavedChanges, setSavedSuccessfully]);
 
   // Handle Android hardware back button
   useEffect(() => {
