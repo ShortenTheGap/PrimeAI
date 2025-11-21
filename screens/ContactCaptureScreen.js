@@ -228,12 +228,10 @@ const ContactCaptureScreen = () => {
             text: 'Save Changes',
             onPress: async () => {
               console.log('User chose to save changes - saving and navigating');
-              await saveContact();
+              await saveContact(null, true); // Skip success alert, we'll navigate directly
               // saveContact sets savedSuccessfully and hasUnsavedChanges
-              // Then navigate after save completes
-              setTimeout(() => {
-                if (onConfirm) onConfirm();
-              }, 500);
+              // Navigate immediately after save completes
+              if (onConfirm) onConfirm();
             },
           },
           {
@@ -282,10 +280,8 @@ const ContactCaptureScreen = () => {
             text: 'Save Changes',
             onPress: async () => {
               console.log('User chose to save changes - saving and going back');
-              await saveContact();
-              setTimeout(() => {
-                navigation.goBack();
-              }, 500);
+              await saveContact(null, true); // Skip success alert, we'll navigate directly
+              navigation.goBack();
             },
           },
           {
@@ -347,10 +343,8 @@ const ContactCaptureScreen = () => {
             text: 'Save Changes',
             onPress: async () => {
               console.log('User chose to save changes - saving and navigating');
-              await saveContact();
-              setTimeout(() => {
-                navigation.dispatch(e.data.action);
-              }, 500);
+              await saveContact(null, true); // Skip success alert, we'll navigate directly
+              navigation.dispatch(e.data.action);
             },
           },
           {
@@ -525,7 +519,7 @@ const ContactCaptureScreen = () => {
     }
   };
 
-    const saveContact = async (overrideRecordingUri = null) => {
+    const saveContact = async (overrideRecordingUri = null, skipSuccessAlert = false) => {
       const mode = route.params?.mode || 'add';
 
       // Validation: require at least name or phone for new contacts
@@ -652,27 +646,32 @@ const ContactCaptureScreen = () => {
         setSavedSuccessfully(true);
         setHasUnsavedChanges(false);
 
-        // Build success message with webhook status
-        let successMessage = `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
+        // Only show success alert if not skipped (when called from warning dialog, we skip it)
+        if (!skipSuccessAlert) {
+          // Build success message with webhook status
+          let successMessage = `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
 
-        if (savedContact.has_recording) {
-          if (savedContact.webhook_status === 'sent') {
-            successMessage += '\n\n🎙️ Voice note sent to N8N for processing!';
-          } else if (savedContact.webhook_status === 'not_configured') {
-            successMessage += '\n\n⚠️ Voice note saved but N8N webhook is not configured.\nConfigure N8N_WEBHOOK_URL on Railway to enable processing.';
+          if (savedContact.has_recording) {
+            if (savedContact.webhook_status === 'sent') {
+              successMessage += '\n\n🎙️ Voice note sent to N8N for processing!';
+            } else if (savedContact.webhook_status === 'not_configured') {
+              successMessage += '\n\n⚠️ Voice note saved but N8N webhook is not configured.\nConfigure N8N_WEBHOOK_URL on Railway to enable processing.';
+            }
           }
-        }
 
-        Alert.alert(
-          '✅ Success!',
-          successMessage,
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('ContactList'),
-            },
-          ]
-        );
+          Alert.alert(
+            '✅ Success!',
+            successMessage,
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate('ContactList'),
+              },
+            ]
+          );
+        } else {
+          console.log('✅ Contact saved - skipping success alert (will navigate from warning dialog)');
+        }
       } catch (error) {
         console.error('Error saving contact:', error);
 
