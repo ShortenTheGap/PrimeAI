@@ -202,14 +202,14 @@ class ContactMonitorService {
       return;
     }
 
-    // App is in background - store for later navigation and send notification
-    console.log('📤 App in background - storing contact and sending notification for:', displayName);
+    // App is in background - send notification to remind user + store for auto-navigation
+    console.log('📤 App in background - sending notification and storing contact:', displayName);
     this.pendingContacts.push(contactData);
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '🎙️ Add Context?',
-        body: `You just added ${displayName}. Capture context while it's fresh!`,
+        title: '🎙️ Add Context Now!',
+        body: `You just added ${displayName}. Tap to capture context while it's fresh!`,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
         data: {
