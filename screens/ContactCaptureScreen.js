@@ -127,7 +127,20 @@ const ContactCaptureScreen = () => {
       setRecording(null);
 
       console.log('Recording stopped, saved to:', uri);
-      Alert.alert('Success', 'Recording saved!');
+
+      // Auto-save when re-recording in edit mode
+      const currentMode = route.params?.mode || 'add';
+      const rawContact = route.params?.contact;
+
+      if (currentMode === 'edit' && rawContact?.contact_id) {
+        console.log('🔄 Re-recording detected - auto-saving to server...');
+        // Wait a moment for state to update, then save
+        setTimeout(() => {
+          saveContact();
+        }, 100);
+      } else {
+        Alert.alert('Success', 'Recording saved! Click "Save to Cloud" when ready.');
+      }
     } catch (error) {
       console.error('Failed to stop recording:', error);
       Alert.alert('Error', 'Failed to stop recording');
