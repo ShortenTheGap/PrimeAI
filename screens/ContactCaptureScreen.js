@@ -20,60 +20,61 @@ const ContactCaptureScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
 
-  const mode = route.params?.mode || 'add';
-  const rawEditContact = route.params?.contact || null;
-  const prefilledContact = route.params?.contactData || null;
-
-  // Transform backend snake_case to camelCase
-  const editContact = rawEditContact ? {
-    ...rawEditContact,
-    recordingUri: rawEditContact.recording_uri || rawEditContact.recordingUri,
-    hasRecording: rawEditContact.has_recording !== undefined ? rawEditContact.has_recording : rawEditContact.hasRecording,
-    photoUrl: rawEditContact.photo_url || rawEditContact.photoUrl,
-    transcript: rawEditContact.transcript,
-  } : null;
-
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState(null);
-  const [recordingUri, setRecordingUri] = useState(editContact?.recordingUri || null);
-  const [hasRecording, setHasRecording] = useState(editContact?.hasRecording || false);
-  const [transcript, setTranscript] = useState(editContact?.transcript || null);
-  const [photoUrl, setPhotoUrl] = useState(editContact?.photoUrl || null);
+  const [recordingUri, setRecordingUri] = useState(null);
+  const [hasRecording, setHasRecording] = useState(false);
+  const [transcript, setTranscript] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: editContact?.name || prefilledContact?.name || '',
-    phone: editContact?.phone || prefilledContact?.phone || '',
-    email: editContact?.email || prefilledContact?.email || '',
-    recordID: editContact?.recordID || prefilledContact?.recordID || null,
+    name: '',
+    phone: '',
+    email: '',
+    recordID: null,
   });
 
     // Update form when route params change
     useEffect(() => {
-      if (mode === 'edit' && editContact) {
+      const rawContact = route.params?.contact;
+      const contactData = route.params?.contactData;
+      const currentMode = route.params?.mode || 'add';
+
+      // Transform backend snake_case to camelCase if needed
+      const transformedContact = rawContact ? {
+        ...rawContact,
+        recordingUri: rawContact.recording_uri || rawContact.recordingUri,
+        hasRecording: rawContact.has_recording !== undefined ? rawContact.has_recording : rawContact.hasRecording,
+        photoUrl: rawContact.photo_url || rawContact.photoUrl,
+        transcript: rawContact.transcript,
+      } : null;
+
+      if (currentMode === 'edit' && transformedContact) {
         // Editing existing contact - populate with contact data
         setFormData({
-          name: editContact.name || '',
-          phone: editContact.phone || '',
-          email: editContact.email || '',
-          recordID: editContact.recordID || null,
+          name: transformedContact.name || '',
+          phone: transformedContact.phone || '',
+          email: transformedContact.email || '',
+          recordID: transformedContact.recordID || null,
         });
-        setRecordingUri(editContact.recordingUri || null);
-        setHasRecording(editContact.hasRecording || false);
-        setPhotoUrl(editContact.photoUrl || null);
-        setTranscript(editContact.transcript || null);
-      } else if (mode === 'add' && prefilledContact) {
+        setRecordingUri(transformedContact.recordingUri || null);
+        setHasRecording(transformedContact.hasRecording || false);
+        setPhotoUrl(transformedContact.photoUrl || null);
+        setTranscript(transformedContact.transcript || null);
+      } else if (currentMode === 'add' && contactData) {
         // New contact from notification - populate with prefilled data
         setFormData({
-          name: prefilledContact.name || '',
-          phone: prefilledContact.phone || '',
-          email: prefilledContact.email || '',
-          recordID: prefilledContact.recordID || null,
+          name: contactData.name || '',
+          phone: contactData.phone || '',
+          email: contactData.email || '',
+          recordID: contactData.recordID || null,
         });
         setRecordingUri(null);
         setHasRecording(false);
         setPhotoUrl(null);
-      } else if (mode === 'add' && !prefilledContact) {
+        setTranscript(null);
+      } else if (currentMode === 'add' && !contactData) {
         // New blank contact - reset everything
         setFormData({
           name: '',
@@ -84,8 +85,9 @@ const ContactCaptureScreen = () => {
         setRecordingUri(null);
         setHasRecording(false);
         setPhotoUrl(null);
+        setTranscript(null);
       }
-    }, [mode, editContact, prefilledContact]);
+    }, [route.params]);
 
   const startRecording = async () => {
     try {
@@ -229,6 +231,12 @@ const ContactCaptureScreen = () => {
       setIsSaving(true);
 
       try {
+        const mode = route.params?.mode || 'add';
+        const rawContact = route.params?.contact;
+
+        // Transform contact_id if needed
+        const contactId = rawContact?.contact_id;
+
         // Prepare contact data for API
         const contactFormData = new FormData();
         contactFormData.append('name', formData.name);
@@ -255,10 +263,10 @@ const ContactCaptureScreen = () => {
         console.log(`${mode === 'edit' ? 'Updating' : 'Creating'} contact in cloud (${API.ENV_NAME})...`);
 
         let response;
-        if (mode === 'edit' && editContact?.contact_id) {
+        if (mode === 'edit' && contactId) {
           // Update existing contact
           response = await axios.put(
-            `${API.API_URL}/api/contacts/${editContact.contact_id}`,
+            `${API.API_URL}/api/contacts/${contactId}`,
             contactFormData,
             {
               headers: {
@@ -445,6 +453,9 @@ const ContactCaptureScreen = () => {
       return null;
     }
   };
+
+  const mode = route.params?.mode || 'add';
+  const prefilledContact = route.params?.contactData;
 
   return (
     <ScrollView style={styles.container}>
