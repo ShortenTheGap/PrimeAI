@@ -189,6 +189,18 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
       hasAudioFile: !!req.file,
       name,
       phone,
+      email,
+    });
+
+    console.log('📥 Full request body:', {
+      name,
+      phone,
+      email,
+      photoUrl,
+      phoneType: typeof phone,
+      emailType: typeof email,
+      phoneUndefined: phone === undefined,
+      emailUndefined: email === undefined,
     });
 
     // Get existing contact
@@ -199,6 +211,9 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
 
     console.log('📋 Existing contact:', {
       contact_id: existingContact.contact_id,
+      name: existingContact.name,
+      phone: existingContact.phone,
+      email: existingContact.email,
       has_recording: existingContact.has_recording,
       recording_uri: existingContact.recording_uri,
     });
@@ -254,6 +269,9 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
 
     console.log('💾 Updating contact with data:', {
       contact_id: contactId,
+      name: contactData.name,
+      phone: contactData.phone,
+      email: contactData.email,
       has_recording,
       recording_uri,
     });
@@ -262,6 +280,9 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
 
     console.log('✅ Contact updated successfully:', {
       contact_id: updatedContact.contact_id,
+      name: updatedContact.name,
+      phone: updatedContact.phone,
+      email: updatedContact.email,
       has_recording: updatedContact.has_recording,
       recording_uri: updatedContact.recording_uri,
     });

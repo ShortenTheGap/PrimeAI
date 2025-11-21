@@ -573,13 +573,17 @@ const ContactCaptureScreen = () => {
           name: formData.name,
           phone: formData.phone,
           email: formData.email,
+          nameLength: formData.name?.length,
+          phoneLength: formData.phone?.length,
+          emailLength: formData.email?.length,
         });
 
         console.log('📤 Fields being sent to API:', {
-          name: 'always sent',
-          phone: formData.phone ? formData.phone : (mode === 'add' ? 'empty string' : 'NOT SENT - will use existing'),
-          email: formData.email ? formData.email : (mode === 'add' ? 'empty string' : 'NOT SENT - will use existing'),
+          name: 'ALWAYS SENT: ' + formData.name,
+          phone: formData.phone ? `SENT: ${formData.phone}` : (mode === 'add' ? 'SENT: empty string' : 'NOT SENT - will preserve existing'),
+          email: formData.email ? `SENT: ${formData.email}` : (mode === 'add' ? 'SENT: empty string' : 'NOT SENT - will preserve existing'),
           mode,
+          contactId: rawContact?.contact_id,
         });
 
         // Add voice recording if exists and is a valid string
