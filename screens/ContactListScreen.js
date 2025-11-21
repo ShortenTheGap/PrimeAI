@@ -185,13 +185,6 @@ const ContactListScreen = () => {
           </View>
         )}
 
-        {item.transcript && (
-          <View style={styles.transcriptCard}>
-            <Text style={styles.transcriptLabel}>📝 Transcript:</Text>
-            <Text style={styles.transcriptText}>{item.transcript}</Text>
-          </View>
-        )}
-
         <View style={styles.contactActions}>
           <TouchableOpacity
             style={styles.actionBtn}
@@ -403,26 +396,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
-    transcriptCard: {
-      backgroundColor: '#0f172a',
-      padding: 12,
-      borderRadius: 8,
-      marginBottom: 12,
-      borderLeftWidth: 3,
-      borderLeftColor: '#6366f1',
-    },
-    transcriptLabel: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: '#6366f1',
-      marginBottom: 6,
-      textTransform: 'uppercase',
-    },
-    transcriptText: {
-      fontSize: 14,
-      color: '#cbd5e1',
-      lineHeight: 20,
-    },
 });
 
 export default ContactListScreen;
