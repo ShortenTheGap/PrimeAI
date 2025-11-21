@@ -46,6 +46,8 @@ const ContactCaptureScreen = () => {
         mode: currentMode,
         rawContact: rawContact ? {
           name: rawContact.name,
+          phone: rawContact.phone,
+          email: rawContact.email,
           has_recording: rawContact.has_recording,
           recording_uri: rawContact.recording_uri,
           contact_id: rawContact.contact_id,
@@ -554,9 +556,31 @@ const ContactCaptureScreen = () => {
 
         // Prepare contact data for API
         const contactFormData = new FormData();
+
+        // Always send name (required for new contacts)
         contactFormData.append('name', formData.name);
-        contactFormData.append('phone', formData.phone || '');
-        contactFormData.append('email', formData.email || '');
+
+        // Only send phone/email if they have values (to avoid overwriting with empty strings)
+        if (formData.phone) {
+          contactFormData.append('phone', formData.phone);
+        } else if (mode === 'add') {
+          // For add mode, send empty string if no phone
+          contactFormData.append('phone', '');
+        }
+
+        if (formData.email) {
+          contactFormData.append('email', formData.email);
+        } else if (mode === 'add') {
+          // For add mode, send empty string if no email
+          contactFormData.append('email', '');
+        }
+
+        console.log('📝 Form data being sent:', {
+          name: formData.name,
+          phone: formData.phone || '(not sent)',
+          email: formData.email || '(not sent)',
+          mode,
+        });
 
         // Add voice recording if exists and is a valid string
         if (uriToUse && typeof uriToUse === 'string' && uriToUse.length > 0) {
