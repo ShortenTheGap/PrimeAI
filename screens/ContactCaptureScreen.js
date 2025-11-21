@@ -113,23 +113,82 @@ const ContactCaptureScreen = () => {
   // Track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+  const [originalData, setOriginalData] = useState(null);
+
+  // Store original data when loading contact
+  useEffect(() => {
+    const rawContact = route.params?.contact;
+    const currentMode = route.params?.mode || 'add';
+
+    if (currentMode === 'edit' && rawContact) {
+      setOriginalData({
+        name: rawContact.name || '',
+        phone: rawContact.phone || '',
+        email: rawContact.email || '',
+        recordingUri: rawContact.recording_uri || rawContact.recordingUri || null,
+        photoUrl: rawContact.photo_url || rawContact.photoUrl || null,
+      });
+      console.log('📝 Stored original data for edit mode:', {
+        name: rawContact.name,
+        phone: rawContact.phone,
+        email: rawContact.email,
+      });
+    } else {
+      setOriginalData(null);
+    }
+  }, [route.params]);
 
   // Mark as having unsaved changes when user modifies form or adds recording
   useEffect(() => {
     const mode = route.params?.mode || 'add';
-    console.log('🔍 Unsaved changes check:', {
-      mode,
-      hasName: !!formData.name,
-      hasPhone: !!formData.phone,
-      hasRecording: !!recordingUri,
-      currentHasUnsavedChanges: hasUnsavedChanges,
-    });
 
-    if (mode === 'add' && (formData.name || formData.phone || recordingUri)) {
-      console.log('✅ Setting hasUnsavedChanges = true');
-      setHasUnsavedChanges(true);
+    if (mode === 'add') {
+      // Add mode: any data means unsaved changes
+      const hasData = formData.name || formData.phone || formData.email || recordingUri;
+      console.log('🔍 Unsaved changes check (add mode):', {
+        mode,
+        hasName: !!formData.name,
+        hasPhone: !!formData.phone,
+        hasEmail: !!formData.email,
+        hasRecording: !!recordingUri,
+        willSetUnsaved: !!hasData,
+      });
+
+      if (hasData) {
+        console.log('✅ Setting hasUnsavedChanges = true (add mode)');
+        setHasUnsavedChanges(true);
+      }
+    } else if (mode === 'edit' && originalData) {
+      // Edit mode: check if current data differs from original
+      const nameChanged = formData.name !== originalData.name;
+      const phoneChanged = formData.phone !== originalData.phone;
+      const emailChanged = formData.email !== originalData.email;
+      const recordingChanged = recordingUri !== originalData.recordingUri;
+      const photoChanged = photoUrl !== originalData.photoUrl;
+
+      const hasChanges = nameChanged || phoneChanged || emailChanged || recordingChanged || photoChanged;
+
+      console.log('🔍 Unsaved changes check (edit mode):', {
+        mode,
+        nameChanged,
+        phoneChanged,
+        emailChanged,
+        recordingChanged,
+        photoChanged,
+        hasChanges,
+        current: { name: formData.name, phone: formData.phone, email: formData.email },
+        original: { name: originalData.name, phone: originalData.phone, email: originalData.email },
+      });
+
+      if (hasChanges) {
+        console.log('✅ Setting hasUnsavedChanges = true (edit mode - data changed)');
+        setHasUnsavedChanges(true);
+      } else {
+        console.log('ℹ️ No changes detected in edit mode');
+        setHasUnsavedChanges(false);
+      }
     }
-  }, [formData.name, formData.phone, formData.email, recordingUri]);
+  }, [formData.name, formData.phone, formData.email, recordingUri, photoUrl, originalData]);
 
   // Handle Android hardware back button
   useEffect(() => {
