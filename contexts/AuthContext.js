@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 
@@ -16,12 +17,20 @@ export const AuthProvider = ({ children }) => {
   // Get Google Client ID from app.json
   const googleClientId = Constants.expoConfig?.extra?.googleClientId;
 
+  // Force use of Expo auth proxy for Expo Go compatibility
+  const redirectUri = AuthSession.makeRedirectUri({
+    useProxy: true,
+  });
+
+  console.log('🔗 OAuth Redirect URI:', redirectUri);
+
   // Configure Google Sign-In
   // Using Web client ID with Expo auth proxy for Expo Go compatibility
   const [request, response, promptAsync] = Google.useAuthRequest({
     expoClientId: googleClientId,
     iosClientId: googleClientId,
     webClientId: googleClientId,
+    redirectUri: redirectUri,
   });
 
   // Check for existing session on mount
