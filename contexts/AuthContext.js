@@ -19,6 +19,8 @@ export const AuthProvider = ({ children }) => {
   // Configure Google Sign-In
   // Using Web client ID with Expo auth proxy for Expo Go compatibility
   const [request, response, promptAsync] = Google.useAuthRequest({
+    expoClientId: googleClientId,
+    iosClientId: googleClientId,
     webClientId: googleClientId,
   });
 
