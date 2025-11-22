@@ -17,6 +17,17 @@ export const AuthProvider = ({ children }) => {
   // Get Google Client ID from app.json
   const googleClientId = Constants.expoConfig?.extra?.googleClientId;
 
+  // Development bypass: Skip auth in Expo Go (OAuth callback doesn't work)
+  // In TestFlight/production builds, this will be false and auth will work normally
+  const isExpoGo = Constants.appOwnership === 'expo';
+  const BYPASS_AUTH_IN_EXPO_GO = true; // Set to false when ready to test in TestFlight
+
+  console.log('🔧 Auth Mode:', {
+    isExpoGo,
+    bypassEnabled: BYPASS_AUTH_IN_EXPO_GO,
+    willSkipAuth: isExpoGo && BYPASS_AUTH_IN_EXPO_GO
+  });
+
   // Hardcoded Expo auth proxy URL for Expo Go
   // This MUST match the redirect URI in Google Cloud Console
   const redirectUri = 'https://auth.expo.io/@gvandender/context-crm';
@@ -60,6 +71,20 @@ export const AuthProvider = ({ children }) => {
 
   const checkStoredAuth = async () => {
     try {
+      // Development bypass: Auto-login in Expo Go
+      if (isExpoGo && BYPASS_AUTH_IN_EXPO_GO) {
+        console.log('🔧 DEV MODE: Bypassing authentication in Expo Go');
+        const mockUser = {
+          id: 'dev-user-123',
+          email: 'dev@example.com',
+          name: 'Development User',
+          picture: 'https://via.placeholder.com/150',
+        };
+        setUser(mockUser);
+        setIsLoading(false);
+        return;
+      }
+
       console.log('🔍 Checking for stored authentication...');
       const storedUser = await AsyncStorage.getItem('@user:auth');
       if (storedUser) {
