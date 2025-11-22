@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Platform, View, Text, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 // Import screens
 import ContactCaptureScreen from './screens/ContactCaptureScreen';
@@ -109,7 +110,8 @@ const AppContent = () => {
   console.log('🔐 Auth State:', {
     isLoading,
     hasUser: !!user,
-    userEmail: user?.email
+    userEmail: user?.email,
+    appOwnership: Constants.appOwnership,
   });
 
   // Show loading screen while checking authentication
@@ -125,14 +127,20 @@ const AppContent = () => {
         <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16 }}>
           Loading PrimeAI...
         </Text>
+        <Text style={{ color: '#64748b', marginTop: 8, fontSize: 12 }}>
+          Checking authentication...
+        </Text>
       </View>
     );
   }
 
   // Show sign-in screen if not authenticated
   if (!user) {
+    console.log('📱 Showing SignInScreen - no user found');
     return <SignInScreen />;
   }
+
+  console.log('✅ User authenticated, showing main app');
 
   // User is authenticated, show main app
   return (

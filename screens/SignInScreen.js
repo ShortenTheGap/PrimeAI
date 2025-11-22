@@ -7,10 +7,16 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import Constants from 'expo-constants';
 import AuthContext from '../contexts/AuthContext';
 
 const SignInScreen = () => {
   const { signIn, isLoading } = useContext(AuthContext);
+
+  console.log('📱 SignInScreen rendered', {
+    isLoading,
+    appOwnership: Constants.appOwnership,
+  });
 
   if (isLoading) {
     return (
@@ -24,6 +30,15 @@ const SignInScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
+        {/* Debug Info - Shows environment */}
+        {__DEV__ && (
+          <View style={styles.debugBanner}>
+            <Text style={styles.debugText}>
+              {Constants.appOwnership === 'expo' ? '🔧 Expo Go' : '📱 TestFlight/Production'}
+            </Text>
+          </View>
+        )}
+
         {/* App Icon */}
         <Image
           source={require('../assets/icon.png')}
@@ -82,6 +97,20 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     padding: 20,
     alignItems: 'center',
+  },
+  debugBanner: {
+    backgroundColor: '#1e293b',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  debugText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
   },
   logo: {
     width: 120,
