@@ -24,11 +24,11 @@ export const AuthProvider = ({ children }) => {
   console.log('🔗 OAuth Redirect URI:', redirectUri);
 
   // Configure Google Sign-In
-  // Using Web client ID with Expo auth proxy for Expo Go compatibility
+  // Note: Expo Go + auth proxy has known issues. Development build recommended.
   const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: googleClientId,
-    iosClientId: googleClientId,
     webClientId: googleClientId,
+    iosClientId: googleClientId, // Required for iOS even with web client
+    androidClientId: googleClientId,
     redirectUri: redirectUri,
   });
 
