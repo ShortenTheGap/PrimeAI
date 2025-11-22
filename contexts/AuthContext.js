@@ -17,21 +17,11 @@ export const AuthProvider = ({ children }) => {
   // Get Google Client ID from app.json
   const googleClientId = Constants.expoConfig?.extra?.googleClientId;
 
-  // Get slug from app.json
-  const slug = Constants.expoConfig?.slug || 'context-crm';
+  // Hardcoded Expo auth proxy URL for Expo Go
+  // This MUST match the redirect URI in Google Cloud Console
+  const redirectUri = 'https://auth.expo.io/@gvandender/context-crm';
 
-  // Explicitly construct Expo auth proxy URL
-  // This will be: https://auth.expo.io/@owner/context-crm
-  const redirectUri = AuthSession.makeRedirectUri({
-    useProxy: true,
-    scheme: undefined, // Don't use custom scheme, force proxy
-  });
-
-  console.log('🔗 OAuth Config:', {
-    slug,
-    redirectUri,
-    isExpoGo: Constants.appOwnership === 'expo',
-  });
+  console.log('🔗 OAuth Redirect URI:', redirectUri);
 
   // Configure Google Sign-In
   // Using Web client ID with Expo auth proxy for Expo Go compatibility
