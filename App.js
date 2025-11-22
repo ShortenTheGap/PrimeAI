@@ -105,6 +105,13 @@ const AppContent = () => {
   // Get authentication state
   const { user, isLoading } = useContext(AuthContext);
 
+  // Debug: Log authentication state
+  console.log('🔐 Auth State:', {
+    isLoading,
+    hasUser: !!user,
+    userEmail: user?.email
+  });
+
   // Show loading screen while checking authentication
   if (isLoading) {
     return (
