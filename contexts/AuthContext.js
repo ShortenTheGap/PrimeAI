@@ -39,18 +39,22 @@ export const AuthProvider = ({ children }) => {
 
   // Handle OAuth response
   useEffect(() => {
-    console.log('🔄 OAuth Response:', JSON.stringify(response, null, 2));
+    if (response) {
+      console.log('🔄 OAuth Response Type:', response.type);
+      console.log('🔄 Full OAuth Response:', JSON.stringify(response, null, 2));
 
-    if (response?.type === 'success') {
-      console.log('✅ OAuth success, fetching user info...');
-      const { authentication } = response;
-      fetchUserInfo(authentication.accessToken);
-    } else if (response?.type === 'error') {
-      console.error('❌ OAuth error:', response.error);
-    } else if (response?.type === 'cancel') {
-      console.log('⚠️ OAuth cancelled by user');
-    } else if (response?.type === 'dismiss') {
-      console.log('⚠️ OAuth dismissed');
+      if (response?.type === 'success') {
+        console.log('✅ OAuth success, fetching user info...');
+        const { authentication } = response;
+        fetchUserInfo(authentication.accessToken);
+      } else if (response?.type === 'error') {
+        console.error('❌ OAuth error:', response.error);
+        console.error('❌ Error params:', response.params);
+      } else if (response?.type === 'cancel') {
+        console.log('⚠️ OAuth cancelled by user');
+      } else if (response?.type === 'dismiss') {
+        console.log('⚠️ OAuth dismissed');
+      }
     }
   }, [response]);
 

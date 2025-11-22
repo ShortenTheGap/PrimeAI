@@ -37,7 +37,6 @@
         "ACCESS_COARSE_LOCATION"
       ]
     },
-    "scheme": "contextcrm",
     "plugins": [
       "expo-notifications"
     ],
