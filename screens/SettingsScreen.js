@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,17 @@ import {
   Alert,
   Linking,
   TextInput,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import ContactMonitorService from '../services/ContactMonitorService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import API from '../config/api';
+import AuthContext from '../contexts/AuthContext';
 
 const SettingsScreen = () => {
+  const { user, signOut } = useContext(AuthContext);
   const [monitoringEnabled, setMonitoringEnabled] = useState(false);
   const [hasPermissions, setHasPermissions] = useState(false);
   const [masterFlowUrl, setMasterFlowUrl] = useState('');
@@ -388,6 +391,47 @@ const SettingsScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Account Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>👤 Account</Text>
+        </View>
+
+        <View style={styles.accountCard}>
+          {user?.picture && (
+            <Image
+              source={{ uri: user.picture }}
+              style={styles.profilePicture}
+            />
+          )}
+          <View style={styles.accountInfo}>
+            <Text style={styles.accountName}>{user?.name || 'User'}</Text>
+            <Text style={styles.accountEmail}>{user?.email || ''}</Text>
+            <Text style={styles.accountId}>ID: {user?.id || ''}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.signOutButton}
+          onPress={() => {
+            Alert.alert(
+              'Sign Out',
+              'Are you sure you want to sign out?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Sign Out',
+                  style: 'destructive',
+                  onPress: signOut,
+                },
+              ]
+            );
+          }}
+        >
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* About */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -585,6 +629,50 @@ const styles = StyleSheet.create({
     color: '#10b981',
     marginTop: 4,
     fontFamily: 'monospace',
+  },
+  accountCard: {
+    backgroundColor: '#1e293b',
+    padding: 20,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  profilePicture: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 16,
+  },
+  accountInfo: {
+    flex: 1,
+  },
+  accountName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f1f5f9',
+    marginBottom: 4,
+  },
+  accountEmail: {
+    fontSize: 14,
+    color: '#94a3b8',
+    marginBottom: 4,
+  },
+  accountId: {
+    fontSize: 12,
+    color: '#64748b',
+    fontFamily: 'monospace',
+  },
+  signOutButton: {
+    backgroundColor: '#ef4444',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  signOutButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

@@ -1,21 +1,26 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform, View, Text } from 'react-native';
+import { Platform, View, Text, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 // Import screens
 import ContactCaptureScreen from './screens/ContactCaptureScreen';
 import ContactListScreen from './screens/ContactListScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import SignInScreen from './screens/SignInScreen';
 
 // Import services
 import ContactMonitorService from './services/ContactMonitorService';
 import BackgroundTaskService from './services/BackgroundTaskService';
 
+// Import authentication
+import { AuthProvider } from './contexts/AuthContext';
+import AuthContext from './contexts/AuthContext';
+
 const Tab = createBottomTabNavigator();
 
-const App = () => {
+const AppContent = () => {
   const navigationRef = React.useRef(null);
 
   // Global flag to track unsaved changes in ContactCapture
@@ -97,6 +102,32 @@ const App = () => {
     });
   };
 
+  // Get authentication state
+  const { user, isLoading } = useContext(AuthContext);
+
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <View style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#0f172a'
+      }}>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16 }}>
+          Loading PrimeAI...
+        </Text>
+      </View>
+    );
+  }
+
+  // Show sign-in screen if not authenticated
+  if (!user) {
+    return <SignInScreen />;
+  }
+
+  // User is authenticated, show main app
   return (
     <NavigationContainer ref={navigationRef}>
       <Tab.Navigator
@@ -220,6 +251,15 @@ const App = () => {
         />
       </Tab.Navigator>
     </NavigationContainer>
+  );
+};
+
+// Main App component wrapped with AuthProvider
+const App = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
