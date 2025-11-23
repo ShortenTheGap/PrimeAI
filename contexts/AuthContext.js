@@ -17,33 +17,39 @@ export const AuthProvider = ({ children }) => {
   // Get Google Client ID from app.json
   const googleClientId = Constants.expoConfig?.extra?.googleClientId;
 
-  // Development bypass: Skip auth in Expo Go (OAuth callback doesn't work)
-  // In TestFlight/production builds, this will be false and auth will work normally
+  // Detect environment
   const isExpoGo = Constants.appOwnership === 'expo';
-  const BYPASS_AUTH_IN_EXPO_GO = true; // Set to false when ready to test in TestFlight
-  const BYPASS_AUTH_ENTIRELY = true; // TEMPORARY: Bypass auth in all builds for debugging
+  const BYPASS_AUTH_IN_EXPO_GO = true; // Expo Go OAuth doesn't work reliably
 
-  console.log('🔧 Auth Mode:', {
+  console.log('🔧 Auth Environment:', {
     isExpoGo,
-    bypassEnabled: BYPASS_AUTH_IN_EXPO_GO,
-    bypassEntirely: BYPASS_AUTH_ENTIRELY,
-    willSkipAuth: BYPASS_AUTH_ENTIRELY || (isExpoGo && BYPASS_AUTH_IN_EXPO_GO)
+    appOwnership: Constants.appOwnership,
+    willBypass: isExpoGo && BYPASS_AUTH_IN_EXPO_GO,
   });
 
-  // Hardcoded Expo auth proxy URL for Expo Go
-  // This MUST match the redirect URI in Google Cloud Console
-  const redirectUri = 'https://auth.expo.io/@gvandender/context-crm';
+  // Configure redirect URI based on environment
+  // Expo Go: Use auth proxy
+  // TestFlight/Production: Let expo-auth-session auto-generate the scheme-based URI
+  const redirectUri = isExpoGo
+    ? 'https://auth.expo.io/@gvandender/context-crm'
+    : undefined; // Let it use the default iOS scheme
 
-  console.log('🔗 OAuth Redirect URI:', redirectUri);
+  console.log('🔗 OAuth Redirect URI:', redirectUri || 'auto-generated from bundle ID');
 
   // Configure Google Sign-In
-  // Note: Expo Go + auth proxy has known issues. Development build recommended.
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: googleClientId,
-    iosClientId: googleClientId, // Required for iOS even with web client
+    iosClientId: googleClientId,
     androidClientId: googleClientId,
-    redirectUri: redirectUri,
+    ...(redirectUri && { redirectUri }), // Only set if explicitly defined
   });
+
+  // Log the actual redirect URI being used after initialization
+  useEffect(() => {
+    if (request?.redirectUri) {
+      console.log('✅ OAuth Request initialized with redirect URI:', request.redirectUri);
+    }
+  }, [request]);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -73,9 +79,10 @@ export const AuthProvider = ({ children }) => {
 
   const checkStoredAuth = async () => {
     try {
-      // Development bypass: Auto-login in ALL builds (temporary fix)
-      if (BYPASS_AUTH_ENTIRELY || (isExpoGo && BYPASS_AUTH_IN_EXPO_GO)) {
-        console.log('🔧 DEV MODE: Bypassing authentication');
+      // Development bypass: Auto-login ONLY in Expo Go (OAuth doesn't work there)
+      // TestFlight/Production will use real Google auth
+      if (isExpoGo && BYPASS_AUTH_IN_EXPO_GO) {
+        console.log('🔧 DEV MODE: Bypassing authentication in Expo Go');
         const mockUser = {
           id: 'dev-user-123',
           email: 'dev@example.com',

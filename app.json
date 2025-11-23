@@ -37,6 +37,7 @@
         "ACCESS_COARSE_LOCATION"
       ]
     },
+    "scheme": "com.googleusercontent.apps.637329769856-2o93eou06te2g1q92ccii3tjg6f0ekhu",
     "plugins": [
       "expo-notifications"
     ],
