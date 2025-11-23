@@ -21,11 +21,13 @@ export const AuthProvider = ({ children }) => {
   // In TestFlight/production builds, this will be false and auth will work normally
   const isExpoGo = Constants.appOwnership === 'expo';
   const BYPASS_AUTH_IN_EXPO_GO = true; // Set to false when ready to test in TestFlight
+  const BYPASS_AUTH_ENTIRELY = true; // TEMPORARY: Bypass auth in all builds for debugging
 
   console.log('🔧 Auth Mode:', {
     isExpoGo,
     bypassEnabled: BYPASS_AUTH_IN_EXPO_GO,
-    willSkipAuth: isExpoGo && BYPASS_AUTH_IN_EXPO_GO
+    bypassEntirely: BYPASS_AUTH_ENTIRELY,
+    willSkipAuth: BYPASS_AUTH_ENTIRELY || (isExpoGo && BYPASS_AUTH_IN_EXPO_GO)
   });
 
   // Hardcoded Expo auth proxy URL for Expo Go
@@ -71,9 +73,9 @@ export const AuthProvider = ({ children }) => {
 
   const checkStoredAuth = async () => {
     try {
-      // Development bypass: Auto-login in Expo Go
-      if (isExpoGo && BYPASS_AUTH_IN_EXPO_GO) {
-        console.log('🔧 DEV MODE: Bypassing authentication in Expo Go');
+      // Development bypass: Auto-login in ALL builds (temporary fix)
+      if (BYPASS_AUTH_ENTIRELY || (isExpoGo && BYPASS_AUTH_IN_EXPO_GO)) {
+        console.log('🔧 DEV MODE: Bypassing authentication');
         const mockUser = {
           id: 'dev-user-123',
           email: 'dev@example.com',
