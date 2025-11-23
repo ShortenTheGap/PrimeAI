@@ -14,8 +14,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Get Google Client ID from app.json
-  const googleClientId = Constants.expoConfig?.extra?.googleClientId;
+  // Get Google Client IDs from app.json
+  const googleIosClientId = Constants.expoConfig?.extra?.googleIosClientId;
+  const googleWebClientId = Constants.expoConfig?.extra?.googleWebClientId;
 
   // Detect environment
   const isExpoGo = Constants.appOwnership === 'expo';
@@ -25,22 +26,24 @@ export const AuthProvider = ({ children }) => {
     isExpoGo,
     appOwnership: Constants.appOwnership,
     willBypass: isExpoGo && BYPASS_AUTH_IN_EXPO_GO,
+    hasIosClientId: !!googleIosClientId,
+    hasWebClientId: !!googleWebClientId,
   });
 
   // Configure redirect URI based on environment
   // Expo Go: Use auth proxy
-  // TestFlight/Production: Let expo-auth-session auto-generate the scheme-based URI
+  // TestFlight/Production: Let expo-auth-session auto-generate the scheme-based URI from iOS client
   const redirectUri = isExpoGo
     ? 'https://auth.expo.io/@gvandender/context-crm'
-    : undefined; // Let it use the default iOS scheme
+    : undefined; // Auto-generated from iOS client ID
 
-  console.log('🔗 OAuth Redirect URI:', redirectUri || 'auto-generated from bundle ID');
+  console.log('🔗 OAuth Redirect URI:', redirectUri || 'auto-generated from iOS client ID');
 
-  // Configure Google Sign-In
+  // Configure Google Sign-In with proper client IDs
+  // iOS client ID for native app, Web client ID for server-side token exchange
   const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: googleClientId,
-    iosClientId: googleClientId,
-    androidClientId: googleClientId,
+    iosClientId: googleIosClientId,
+    webClientId: googleWebClientId,
     ...(redirectUri && { redirectUri }), // Only set if explicitly defined
   });
 
