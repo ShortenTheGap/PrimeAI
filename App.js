@@ -9,7 +9,7 @@ import Constants from 'expo-constants';
 import ContactCaptureScreen from './screens/ContactCaptureScreen';
 import ContactListScreen from './screens/ContactListScreen';
 import SettingsScreen from './screens/SettingsScreen';
-import SignInScreen from './screens/SignInScreen';
+// SignInScreen removed - not needed without authentication
 
 // Import services
 import ContactMonitorService from './services/ContactMonitorService';

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,10 @@ import Constants from 'expo-constants';
 import ContactMonitorService from '../services/ContactMonitorService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import API from '../config/api';
-import AuthContext from '../contexts/AuthContext';
+// AuthContext removed - authentication disabled for Build 19
 
 const SettingsScreen = () => {
-  const { user, signOut } = useContext(AuthContext);
+  // Authentication removed
   const [monitoringEnabled, setMonitoringEnabled] = useState(false);
   const [hasPermissions, setHasPermissions] = useState(false);
   const [masterFlowUrl, setMasterFlowUrl] = useState('');
@@ -391,46 +391,7 @@ const SettingsScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Account Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>👤 Account</Text>
-        </View>
-
-        <View style={styles.accountCard}>
-          {user?.picture && (
-            <Image
-              source={{ uri: user.picture }}
-              style={styles.profilePicture}
-            />
-          )}
-          <View style={styles.accountInfo}>
-            <Text style={styles.accountName}>{user?.name || 'User'}</Text>
-            <Text style={styles.accountEmail}>{user?.email || ''}</Text>
-            <Text style={styles.accountId}>ID: {user?.id || ''}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={() => {
-            Alert.alert(
-              'Sign Out',
-              'Are you sure you want to sign out?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Sign Out',
-                  style: 'destructive',
-                  onPress: signOut,
-                },
-              ]
-            );
-          }}
-        >
-          <Text style={styles.signOutButtonText}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Account Section - REMOVED FOR BUILD 19 (No Authentication) */}
 
       {/* About */}
       <View style={styles.section}>
