@@ -114,6 +114,10 @@ const AppContent = () => {
     appOwnership: Constants.appOwnership,
   });
 
+  // TEMPORARY: Skip auth check entirely to diagnose black screen issue
+  // Show main app directly
+  console.log('⚠️ BYPASS: Skipping authentication check for debugging');
+
   // Show loading screen while checking authentication
   if (isLoading) {
     return (
@@ -134,13 +138,14 @@ const AppContent = () => {
     );
   }
 
+  // TEMPORARY: Comment out auth gate
   // Show sign-in screen if not authenticated
-  if (!user) {
-    console.log('📱 Showing SignInScreen - no user found');
-    return <SignInScreen />;
-  }
+  // if (!user) {
+  //   console.log('📱 Showing SignInScreen - no user found');
+  //   return <SignInScreen />;
+  // }
 
-  console.log('✅ User authenticated, showing main app');
+  console.log('✅ Showing main app (auth bypassed for debugging)');
 
   // User is authenticated, show main app
   return (
