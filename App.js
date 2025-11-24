@@ -15,9 +15,9 @@ import SignInScreen from './screens/SignInScreen';
 import ContactMonitorService from './services/ContactMonitorService';
 import BackgroundTaskService from './services/BackgroundTaskService';
 
-// Import authentication
-import { AuthProvider } from './contexts/AuthContext';
-import AuthContext from './contexts/AuthContext';
+// Import authentication - TEMPORARILY DISABLED FOR DEBUGGING
+// import { AuthProvider } from './contexts/AuthContext';
+// import AuthContext from './contexts/AuthContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -103,49 +103,9 @@ const AppContent = () => {
     });
   };
 
-  // Get authentication state
-  const { user, isLoading } = useContext(AuthContext);
-
-  // Debug: Log authentication state
-  console.log('🔐 Auth State:', {
-    isLoading,
-    hasUser: !!user,
-    userEmail: user?.email,
-    appOwnership: Constants.appOwnership,
-  });
-
-  // TEMPORARY: Skip auth check entirely to diagnose black screen issue
-  // Show main app directly
-  console.log('⚠️ BYPASS: Skipping authentication check for debugging');
-
-  // Show loading screen while checking authentication
-  if (isLoading) {
-    return (
-      <View style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#0f172a'
-      }}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16 }}>
-          Loading PrimeAI...
-        </Text>
-        <Text style={{ color: '#64748b', marginTop: 8, fontSize: 12 }}>
-          Checking authentication...
-        </Text>
-      </View>
-    );
-  }
-
-  // TEMPORARY: Comment out auth gate
-  // Show sign-in screen if not authenticated
-  // if (!user) {
-  //   console.log('📱 Showing SignInScreen - no user found');
-  //   return <SignInScreen />;
-  // }
-
-  console.log('✅ Showing main app (auth bypassed for debugging)');
+  // TEMPORARY: Authentication completely disabled for debugging black screen
+  console.log('⚠️ AUTH DISABLED: App loading without authentication');
+  console.log('📱 App Owner ship:', Constants.appOwnership);
 
   // User is authenticated, show main app
   return (
@@ -274,13 +234,9 @@ const AppContent = () => {
   );
 };
 
-// Main App component wrapped with AuthProvider
+// Main App component - AuthProvider TEMPORARILY REMOVED
 const App = () => {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
+  return <AppContent />;
 };
 
 export default App;
