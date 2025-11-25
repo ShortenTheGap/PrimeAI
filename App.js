@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform, View, Text } from 'react-native';
+import { Platform, View, Text, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 // Import screens
@@ -18,6 +18,7 @@ const Tab = createBottomTabNavigator();
 
 const App = () => {
   const navigationRef = React.useRef(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Global flag to track unsaved changes in ContactCapture
   global.hasUnsavedContactChanges = false;
@@ -91,8 +92,10 @@ const App = () => {
       }
 
       console.log('✅ App initialized successfully');
+      setIsInitialized(true); // Allow app to render
     } catch (error) {
       console.error('❌ App initialization error:', error);
+      setIsInitialized(true); // Still render app even if init fails
     }
   };
 
@@ -104,6 +107,18 @@ const App = () => {
       mode: 'add'
     });
   };
+
+  // Show loading screen while initializing
+  if (!isInitialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' }}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16 }}>
+          Initializing...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer ref={navigationRef}>
