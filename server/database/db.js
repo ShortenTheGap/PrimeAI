@@ -32,7 +32,7 @@ if (usePostgres) {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS contacts (
           contact_id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
+          user_id TEXT,
           name TEXT NOT NULL,
           phone TEXT,
           email TEXT,
@@ -42,14 +42,53 @@ if (usePostgres) {
           transcript TEXT,
           analysis TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+      `);
+
+      // MIGRATION: Add user_id column if it doesn't exist
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'contacts' AND column_name = 'user_id'
+          ) THEN
+            ALTER TABLE contacts ADD COLUMN user_id TEXT;
+          END IF;
+        END $$;
+      `);
+
+      // MIGRATION: Set a default user_id for existing contacts without one
+      await pool.query(`
+        UPDATE contacts
+        SET user_id = 'legacy_user_' || contact_id::TEXT
+        WHERE user_id IS NULL
+      `);
+
+      // MIGRATION: Make user_id NOT NULL after setting defaults
+      await pool.query(`
+        ALTER TABLE contacts ALTER COLUMN user_id SET NOT NULL
       `);
 
       // Create index for faster user queries
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id)
+      `);
+
+      // Add foreign key constraint if it doesn't exist
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'contacts_user_id_fkey'
+          ) THEN
+            ALTER TABLE contacts
+            ADD CONSTRAINT contacts_user_id_fkey
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+          END IF;
+        END $$;
       `);
 
       console.log('✅ PostgreSQL database initialized with multi-user support');
