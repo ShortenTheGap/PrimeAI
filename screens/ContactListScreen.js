@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import apiClient from '../services/ApiService';
 import API from '../config/api';
 
 // Cache configuration
@@ -118,7 +118,7 @@ const ContactListScreen = () => {
 
     try {
       console.log(`🌐 Syncing contacts from server (${API.ENV_NAME})...`);
-      const response = await axios.get(`${API.API_URL}/api/contacts`);
+      const response = await apiClient.get('/api/contacts');
       const contactsList = response.data || [];
 
       console.log(`✅ Synced ${contactsList.length} contacts from server`);
@@ -210,7 +210,7 @@ const ContactListScreen = () => {
           onPress: async () => {
             try {
               console.log(`Deleting contact ${contactId} from cloud...`);
-              await axios.delete(`${API.API_URL}/api/contacts/${contactId}`);
+              await apiClient.delete(`/api/contacts/${contactId}`);
 
               // Invalidate cache and reload from server
               await clearCache();

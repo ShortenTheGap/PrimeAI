@@ -7,6 +7,18 @@ const axios = require('axios');
 const FormData = require('form-data');
 const db = require('../database/db');
 
+// Middleware to extract and verify user_id from headers
+const authenticateUser = (req, res, next) => {
+  const userId = req.headers['x-user-id'];
+
+  if (!userId) {
+    return res.status(401).json({ error: 'User authentication required' });
+  }
+
+  req.userId = userId;
+  next();
+};
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -91,10 +103,10 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = nu
   }
 };
 
-// GET all contacts
-router.get('/', async (req, res) => {
+// GET all contacts (with authentication)
+router.get('/', authenticateUser, async (req, res) => {
   try {
-    const contacts = await db.getAllContacts();
+    const contacts = await db.getAllContacts(req.userId);
     res.json(contacts);
   } catch (error) {
     console.error('Error fetching contacts:', error);
@@ -102,10 +114,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET single contact
-router.get('/:id', async (req, res) => {
+// GET single contact (with authentication)
+router.get('/:id', authenticateUser, async (req, res) => {
   try {
-    const contact = await db.getContactById(req.params.id);
+    const contact = await db.getContactById(req.params.id, req.userId);
     if (!contact) {
       return res.status(404).json({ error: 'Contact not found' });
     }
@@ -116,8 +128,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST new contact
-router.post('/', upload.single('audio'), async (req, res) => {
+// POST new contact (with authentication)
+router.post('/', authenticateUser, upload.single('audio'), async (req, res) => {
   try {
     const { name, phone, email, photoUrl } = req.body;
 
@@ -146,8 +158,8 @@ router.post('/', upload.single('audio'), async (req, res) => {
       analysis: null
     };
 
-    const newContact = await db.createContact(contactData);
-    console.log('✅ Contact created:', newContact.contact_id);
+    const newContact = await db.createContact(contactData, req.userId);
+    console.log('✅ Contact created:', newContact.contact_id, 'for user:', req.userId);
 
     let webhook_status = 'not_sent';
 
@@ -179,8 +191,8 @@ router.post('/', upload.single('audio'), async (req, res) => {
   }
 });
 
-// PUT update contact
-router.put('/:id', upload.single('audio'), async (req, res) => {
+// PUT update contact (with authentication)
+router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) => {
   try {
     const { name, phone, email, photoUrl } = req.body;
     const contactId = req.params.id;
@@ -190,6 +202,7 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
       name,
       phone,
       email,
+      userId: req.userId,
     });
 
     console.log('📥 Full request body:', {
@@ -204,7 +217,7 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
     });
 
     // Get existing contact
-    const existingContact = await db.getContactById(contactId);
+    const existingContact = await db.getContactById(contactId, req.userId);
     if (!existingContact) {
       return res.status(404).json({ error: 'Contact not found' });
     }
@@ -276,7 +289,7 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
       recording_uri,
     });
 
-    const updatedContact = await db.updateContact(contactId, contactData);
+    const updatedContact = await db.updateContact(contactId, contactData, req.userId);
 
     console.log('✅ Contact updated successfully:', {
       contact_id: updatedContact.contact_id,
@@ -297,13 +310,14 @@ router.put('/:id', upload.single('audio'), async (req, res) => {
   }
 });
 
-// PATCH update transcript (called by N8N webhook)
+// PATCH update transcript (called by N8N webhook - no auth required for webhook callbacks)
 router.patch('/:id/transcript', async (req, res) => {
   try {
-    const { transcript, analysis } = req.body;
+    const { transcript, analysis, user_id } = req.body;
     const contactId = req.params.id;
 
-    const existingContact = await db.getContactById(contactId);
+    // Get contact (need user_id from webhook payload)
+    const existingContact = await db.getContactById(contactId, user_id);
     if (!existingContact) {
       return res.status(404).json({ error: 'Contact not found' });
     }
@@ -314,7 +328,7 @@ router.patch('/:id/transcript', async (req, res) => {
       analysis: analysis || existingContact.analysis
     };
 
-    const updatedContact = await db.updateContact(contactId, contactData);
+    const updatedContact = await db.updateContact(contactId, contactData, user_id);
 
     console.log('✅ Transcript updated for contact:', contactId);
     res.json(updatedContact);
@@ -324,13 +338,13 @@ router.patch('/:id/transcript', async (req, res) => {
   }
 });
 
-// DELETE contact
-router.delete('/:id', async (req, res) => {
+// DELETE contact (with authentication)
+router.delete('/:id', authenticateUser, async (req, res) => {
   try {
     const contactId = req.params.id;
 
     // Get contact to delete associated files
-    const contact = await db.getContactById(contactId);
+    const contact = await db.getContactById(contactId, req.userId);
     if (!contact) {
       return res.status(404).json({ error: 'Contact not found' });
     }
@@ -343,9 +357,9 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
-    await db.deleteContact(contactId);
+    await db.deleteContact(contactId, req.userId);
 
-    console.log('✅ Contact deleted:', contactId);
+    console.log('✅ Contact deleted:', contactId, 'for user:', req.userId);
     res.json({ message: 'Contact deleted successfully' });
   } catch (error) {
     console.error('Error deleting contact:', error);

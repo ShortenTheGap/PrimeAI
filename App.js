@@ -12,6 +12,7 @@ import SettingsScreen from './screens/SettingsScreen';
 // Import services
 import ContactMonitorService from './services/ContactMonitorService';
 import BackgroundTaskService from './services/BackgroundTaskService';
+import userService from './services/UserService';
 
 const Tab = createBottomTabNavigator();
 
@@ -61,6 +62,13 @@ const App = () => {
 
   const initializeApp = async () => {
     try {
+      // FIRST: Initialize user (device-based authentication)
+      const user = await userService.initializeUser();
+      console.log('✅ User authenticated:', user.userId);
+      if (user.isNewUser) {
+        console.log('🎉 Welcome! This is a new device.');
+      }
+
       // Initialize foreground contact monitoring
       await ContactMonitorService.initialize();
       console.log('✅ Foreground monitoring initialized');

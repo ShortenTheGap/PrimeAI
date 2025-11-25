@@ -59,6 +59,9 @@ const getEnvVars = () => {
 
 const config = getEnvVars();
 
+// Export API_URL for use in services
+export const API_URL = config.apiUrl;
+
 export default {
   API_URL: config.apiUrl,
   ENV_NAME: config.name,
@@ -67,6 +70,7 @@ export default {
   endpoints: {
     health: '/api/health',
     contacts: '/api/contacts',
+    users: '/api/users',
     transcribe: '/api/transcribe',
     analyzeContext: '/api/analyze-context',
     generateMessage: '/api/generate-message'

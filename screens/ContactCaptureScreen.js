@@ -14,7 +14,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios';
+import apiClient from '../services/ApiService';
 import API from '../config/api';
 
 // Cache keys (must match ContactListScreen)
@@ -676,7 +676,7 @@ const ContactCaptureScreen = () => {
         let response;
         if (modeParam === 'edit' && contactId) {
           // Update existing contact
-          response = await axios.put(
+          response = await apiClient.put(
             `${API.API_URL}/api/contacts/${contactId}`,
             contactFormData,
             {
@@ -688,7 +688,7 @@ const ContactCaptureScreen = () => {
           );
         } else {
           // Create new contact
-          response = await axios.post(
+          response = await apiClient.post(
             `${API.API_URL}/api/contacts`,
             contactFormData,
             {
@@ -868,7 +868,7 @@ const ContactCaptureScreen = () => {
         let response;
         if (mode === 'edit' && contactId) {
           // Update existing contact
-          response = await axios.put(
+          response = await apiClient.put(
             `${API.API_URL}/api/contacts/${contactId}`,
             contactFormData,
             {
@@ -880,7 +880,7 @@ const ContactCaptureScreen = () => {
           );
         } else {
           // Create new contact
-          response = await axios.post(
+          response = await apiClient.post(
             `${API.API_URL}/api/contacts`,
             contactFormData,
             {

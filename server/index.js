@@ -25,13 +25,50 @@ const db = require('./database/db');
 const contactsRouter = require('./routes/contacts');
 app.use('/api/contacts', contactsRouter);
 
+// User Management Endpoints
+// Register or verify a user by device ID
+app.post('/api/users/register', async (req, res) => {
+  try {
+    const { deviceId, deviceName } = req.body;
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'Device ID is required' });
+    }
+
+    // Generate user_id from device_id (simple approach)
+    const userId = `user_${deviceId.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+    // Check if user exists
+    let user = await db.getUserByDeviceId(deviceId);
+
+    if (!user) {
+      // Create new user
+      user = await db.createUser(userId, deviceId, deviceName);
+      console.log('✅ New user created:', userId);
+    } else {
+      console.log('✅ Existing user found:', user.user_id);
+    }
+
+    res.json({
+      userId: user.user_id,
+      deviceId: user.device_id,
+      deviceName: user.device_name,
+      isNewUser: !user
+    });
+  } catch (error) {
+    console.error('Error registering user:', error);
+    res.status(500).json({ error: 'Failed to register user' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     message: 'PrimeAI Backend is running',
     environment: process.env.NODE_ENV || 'development',
-    database: db.isConnected ? 'connected' : 'disconnected'
+    database: db.isConnected ? 'connected' : 'disconnected',
+    multiUser: true
   });
 });
 
