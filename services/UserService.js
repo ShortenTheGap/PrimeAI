@@ -112,8 +112,17 @@ class UserService {
   /**
    * Get current user data
    */
-  getUser() {
-    return this.currentUser;
+  async getUser() {
+    if (this.currentUser) {
+      return this.currentUser;
+    }
+    // Try to load from storage
+    const storedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
+    if (storedUser) {
+      this.currentUser = JSON.parse(storedUser);
+      return this.currentUser;
+    }
+    return null;
   }
 
   /**

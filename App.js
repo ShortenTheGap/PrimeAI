@@ -68,48 +68,42 @@ const App = () => {
 
   const initializeApp = async () => {
     try {
-      // Check if user is already authenticated
-      const authenticated = await userService.isAuthenticated();
+      // Check for JWT token (email/password auth)
+      const token = await userService.getToken();
 
-      if (authenticated) {
-        // Load stored user data
-        const token = await userService.getToken();
-        if (token) {
-          // JWT auth - load user from token
-          const storedUser = await userService.getUser();
-          if (storedUser) {
-            console.log('✅ User authenticated with JWT:', storedUser.email);
-            setIsAuthenticated(true);
-          }
-        } else {
-          // Device-based auth - initialize user
-          const user = await userService.initializeUser();
-          console.log('✅ User authenticated (device-based):', user.userId);
-          if (user.isNewUser) {
-            console.log('🎉 Welcome! This is a new device.');
-          }
+      if (token) {
+        // User has JWT token - load their data
+        const storedUser = await userService.getUser();
+        if (storedUser) {
+          console.log('✅ User authenticated with JWT:', storedUser.email);
           setIsAuthenticated(true);
-        }
 
-        // Initialize services only after authentication
-        await ContactMonitorService.initialize();
-        console.log('✅ Foreground monitoring initialized');
+          // Initialize services after authentication
+          await ContactMonitorService.initialize();
+          console.log('✅ Foreground monitoring initialized');
 
-        ContactMonitorService.setNavigationCallback((contactData) => {
-          console.log('🔄 Auto-navigating to Contact Capture with:', contactData.name);
-          navigationRef.current?.navigate('ContactCapture', {
-            contactData: contactData,
-            mode: 'add'
+          ContactMonitorService.setNavigationCallback((contactData) => {
+            console.log('🔄 Auto-navigating to Contact Capture with:', contactData.name);
+            navigationRef.current?.navigate('ContactCapture', {
+              contactData: contactData,
+              mode: 'add'
+            });
           });
-        });
 
-        const backgroundEnabled = await BackgroundTaskService.register();
-        if (backgroundEnabled) {
-          console.log('✅ Background monitoring enabled');
+          const backgroundEnabled = await BackgroundTaskService.register();
+          if (backgroundEnabled) {
+            console.log('✅ Background monitoring enabled');
+          } else {
+            console.log('⚠️ Background monitoring not available');
+          }
         } else {
-          console.log('⚠️ Background monitoring not available');
+          // Token exists but no user data - clear and show login
+          console.log('⚠️ Token found but no user data - clearing');
+          await userService.logout();
+          setIsAuthenticated(false);
         }
       } else {
+        // No token - require login/signup
         console.log('👋 No authentication found - showing login screen');
         setIsAuthenticated(false);
       }

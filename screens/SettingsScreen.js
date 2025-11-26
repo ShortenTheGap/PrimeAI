@@ -32,7 +32,7 @@ const SettingsScreen = () => {
   }, []);
 
   const loadUserInfo = async () => {
-    const user = userService.getUser();
+    const user = await userService.getUser();
     const token = await userService.getToken();
     if (user || token) {
       setUserInfo(user);
