@@ -31,6 +31,13 @@ const SettingsScreen = () => {
     loadUserInfo();
   }, []);
 
+  // Debug: Monitor masterFlowUrl state changes
+  useEffect(() => {
+    console.log('🔍 masterFlowUrl state changed to:', masterFlowUrl);
+    console.log('   Length:', masterFlowUrl?.length || 0);
+    console.log('   Is shortened URL?', masterFlowUrl?.includes('gourl.es') || false);
+  }, [masterFlowUrl]);
+
   const loadUserInfo = async () => {
     const user = await userService.getUser();
     const token = await userService.getToken();
@@ -45,6 +52,7 @@ const SettingsScreen = () => {
       const savedCloudName = await AsyncStorage.getItem('@cloudinary:cloud_name');
       const savedUploadPreset = await AsyncStorage.getItem('@cloudinary:upload_preset');
 
+      console.log('📥 Loading N8N URL from AsyncStorage:', savedUrl);
       if (savedUrl) setMasterFlowUrl(savedUrl);
       if (savedCloudName) setCloudinaryCloudName(savedCloudName);
       if (savedUploadPreset) setCloudinaryUploadPreset(savedUploadPreset);
@@ -73,9 +81,11 @@ const SettingsScreen = () => {
   };
 
   const saveMasterFlowUrl = async (value) => {
+    console.log('📝 Saving N8N URL:', value);
     setMasterFlowUrl(value);
     try {
       await AsyncStorage.setItem('@webhook:master_flow', value);
+      console.log('✅ N8N URL saved successfully');
     } catch (error) {
       console.error('Error saving master flow URL:', error);
     }
@@ -329,11 +339,18 @@ const SettingsScreen = () => {
           <TextInput
             style={styles.webhookInput}
             value={masterFlowUrl}
-            onChangeText={saveMasterFlowUrl}
+            onChangeText={(text) => {
+              console.log('⌨️ TextInput onChangeText received:', text);
+              console.log('   Length:', text.length);
+              console.log('   First 50 chars:', text.substring(0, 50));
+              saveMasterFlowUrl(text);
+            }}
             placeholder="https://your-n8n-instance.com/webhook/..."
             placeholderTextColor="#64748b"
             autoCapitalize="none"
             autoCorrect={false}
+            spellCheck={false}
+            textContentType="URL"
           />
           <Text style={styles.webhookHint}>
             All actions (welcome, link, follow) will be sent to this single URL with action tags
