@@ -32,8 +32,6 @@ const ContactCaptureScreen = () => {
   const [transcript, setTranscript] = useState(null);
   const [photoUrl, setPhotoUrl] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isWaitingForTranscript, setIsWaitingForTranscript] = useState(false);
-  const transcriptPollInterval = React.useRef(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -716,10 +714,10 @@ const ContactCaptureScreen = () => {
         setHasUnsavedChanges(false);
         global.hasUnsavedContactChanges = false;
 
-        // Start polling for transcript if recording was uploaded and sent to N8N
-        if (savedContact.has_recording && savedContact.webhook_status === 'sent') {
-          console.log('🔄 Recording uploaded and sent to N8N - starting transcript polling');
-          startTranscriptPolling(savedContact.contact_id);
+        // Set transcript immediately if it was returned (instant transcription!)
+        if (savedContact.transcript) {
+          console.log('✅ Instant transcript received:', savedContact.transcript.substring(0, 50) + '...');
+          setTranscript(savedContact.transcript);
         }
 
         // Invalidate contacts cache to force refresh on list screen
@@ -731,10 +729,15 @@ const ContactCaptureScreen = () => {
           let successMessage = `Contact ${modeParam === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
 
           if (savedContact.has_recording) {
+            if (savedContact.transcript) {
+              successMessage += '\n\n🎙️ Voice note transcribed instantly!';
+            } else {
+              successMessage += '\n\n🎙️ Voice note saved (transcription unavailable).';
+            }
+
+            // N8N is now optional for power users
             if (savedContact.webhook_status === 'sent') {
-              successMessage += '\n\n🎙️ Voice note sent to N8N for processing!\n⏳ Waiting for transcript...';
-            } else if (savedContact.webhook_status === 'not_configured') {
-              successMessage += '\n\n⚠️ Voice note saved but N8N webhook is not configured.\nConfigure N8N_WEBHOOK_URL on Railway to enable processing.';
+              successMessage += '\n📤 Data sent to N8N webhook for custom integrations.';
             }
           }
 
@@ -913,10 +916,10 @@ const ContactCaptureScreen = () => {
         setSavedSuccessfully(true);
         setHasUnsavedChanges(false);
 
-        // Start polling for transcript if recording was uploaded and sent to N8N
-        if (savedContact.has_recording && savedContact.webhook_status === 'sent') {
-          console.log('🔄 Recording uploaded and sent to N8N - starting transcript polling');
-          startTranscriptPolling(savedContact.contact_id);
+        // Set transcript immediately if it was returned (instant transcription!)
+        if (savedContact.transcript) {
+          console.log('✅ Instant transcript received:', savedContact.transcript.substring(0, 50) + '...');
+          setTranscript(savedContact.transcript);
         }
 
         // Invalidate contacts cache to force refresh on list screen
@@ -929,10 +932,15 @@ const ContactCaptureScreen = () => {
           let successMessage = `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
 
           if (savedContact.has_recording) {
+            if (savedContact.transcript) {
+              successMessage += '\n\n🎙️ Voice note transcribed instantly!';
+            } else {
+              successMessage += '\n\n🎙️ Voice note saved (transcription unavailable).';
+            }
+
+            // N8N is now optional for power users
             if (savedContact.webhook_status === 'sent') {
-              successMessage += '\n\n🎙️ Voice note sent to N8N for processing!\n⏳ Waiting for transcript...';
-            } else if (savedContact.webhook_status === 'not_configured') {
-              successMessage += '\n\n⚠️ Voice note saved but N8N webhook is not configured.\nConfigure N8N_WEBHOOK_URL on Railway to enable processing.';
+              successMessage += '\n📤 Data sent to N8N webhook for custom integrations.';
             }
           }
 
@@ -1090,55 +1098,6 @@ const ContactCaptureScreen = () => {
     }
   };
 
-  // Poll for transcript updates after recording is saved
-  const startTranscriptPolling = (contactId) => {
-    console.log('🔄 Starting transcript polling for contact:', contactId);
-    setIsWaitingForTranscript(true);
-
-    let pollCount = 0;
-    const maxPolls = 20; // Poll for up to 2 minutes (20 * 6 seconds)
-
-    // Clear any existing interval
-    if (transcriptPollInterval.current) {
-      clearInterval(transcriptPollInterval.current);
-    }
-
-    transcriptPollInterval.current = setInterval(async () => {
-      pollCount++;
-      console.log(`📡 Polling for transcript (attempt ${pollCount}/${maxPolls})...`);
-
-      try {
-        const response = await apiClient.get(`${API.API_URL}/api/contacts`);
-        const contacts = response.data || [];
-        const updatedContact = contacts.find(c => c.contact_id === contactId);
-
-        if (updatedContact && updatedContact.transcript) {
-          console.log('✅ Transcript received!', updatedContact.transcript.substring(0, 50) + '...');
-          setTranscript(updatedContact.transcript);
-          setIsWaitingForTranscript(false);
-          clearInterval(transcriptPollInterval.current);
-          transcriptPollInterval.current = null;
-        } else if (pollCount >= maxPolls) {
-          console.log('⏱️ Transcript polling timeout - stopping');
-          setIsWaitingForTranscript(false);
-          clearInterval(transcriptPollInterval.current);
-          transcriptPollInterval.current = null;
-        }
-      } catch (error) {
-        console.error('Error polling for transcript:', error);
-        // Continue polling despite errors
-      }
-    }, 6000); // Poll every 6 seconds
-  };
-
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (transcriptPollInterval.current) {
-        clearInterval(transcriptPollInterval.current);
-      }
-    };
-  }, []);
 
   // Cleanup: Clear global flags when screen loses focus or unmounts
   useEffect(() => {
@@ -1248,13 +1207,6 @@ const ContactCaptureScreen = () => {
         {hasRecording && (
           <View style={styles.recordingStatus}>
             <Text style={styles.recordingStatusText}>✅ Recording saved</Text>
-          </View>
-        )}
-
-        {isWaitingForTranscript && !transcript && (
-          <View style={styles.transcriptWaiting}>
-            <Text style={styles.transcriptWaitingText}>⏳ Processing transcript...</Text>
-            <Text style={styles.transcriptWaitingSubtext}>This usually takes 10-30 seconds</Text>
           </View>
         )}
 

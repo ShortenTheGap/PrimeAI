@@ -6,9 +6,15 @@ const fs = require('fs');
 const axios = require('axios');
 const FormData = require('form-data');
 const jwt = require('jsonwebtoken');
+const OpenAI = require('openai');
 const db = require('../database/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+
+// Initialize OpenAI client
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+}) : null;
 
 // Middleware to extract and verify user authentication (JWT or device-based)
 const authenticateUser = async (req, res, next) => {
@@ -73,7 +79,33 @@ const upload = multer({
   }
 });
 
-// Send audio to N8N for transcription
+// Transcribe audio using OpenAI Whisper
+const transcribeAudio = async (audioPath) => {
+  if (!openai) {
+    console.log('⚠️ OpenAI not configured - skipping automatic transcription');
+    return null;
+  }
+
+  try {
+    console.log('🎙️ Starting automatic transcription with OpenAI Whisper...');
+
+    const response = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(audioPath),
+      model: 'whisper-1',
+      language: 'en', // Can be made configurable
+    });
+
+    const transcript = response.text;
+    console.log('✅ Transcription complete:', transcript.substring(0, 100) + '...');
+
+    return transcript;
+  } catch (error) {
+    console.error('❌ OpenAI transcription error:', error.message);
+    return null;
+  }
+};
+
+// Send audio to N8N for transcription (OPTIONAL - for power users with custom integrations)
 const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = null, userId = null) => {
   try {
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
@@ -196,26 +228,41 @@ router.post('/', authenticateUser, upload.single('audio'), async (req, res) => {
     console.log('✅ Contact created:', newContact.contact_id, 'for user:', req.userId);
 
     let webhook_status = 'not_sent';
+    let transcript = null;
 
-    // NOW send to N8N with contact_id (async, don't wait)
+    // Transcribe audio immediately if uploaded
     if (req.file) {
       const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
-      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
+      // Step 1: Automatic transcription with OpenAI (always, if configured)
+      transcript = await transcribeAudio(audioPath);
+
+      if (transcript) {
+        // Update contact with transcript immediately
+        await db.updateContact(newContact.contact_id, {
+          ...newContact,
+          transcript,
+        }, req.userId);
+        console.log('💾 Transcript saved to database');
+      }
+
+      // Step 2: OPTIONAL - Send to N8N for power users with custom integrations
+      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
       if (n8nWebhookUrl) {
         webhook_status = 'sent';
-        console.log('📤 Sending complete contact data to N8N webhook for processing...');
+        console.log('📤 Sending complete contact data to N8N webhook (optional power user feature)...');
         sendToN8N(audioPath, { name, phone, email }, photoUrl, newContact.contact_id, req.userId).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {
         webhook_status = 'not_configured';
-        console.log('⚠️ N8N_WEBHOOK_URL not configured - skipping webhook');
+        console.log('ℹ️ N8N_WEBHOOK_URL not configured - skipping optional webhook');
       }
     }
 
     res.status(201).json({
       ...newContact,
+      transcript, // Include transcript in response
       webhook_status,
       has_recording
     });
@@ -270,6 +317,7 @@ router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) =>
     let webhook_status = 'not_sent';
 
     // Handle new audio file if uploaded
+    let newTranscript = null;
     if (req.file) {
       console.log('🎙️ New audio file detected:', req.file.filename);
 
@@ -287,19 +335,22 @@ router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) =>
 
       console.log('✅ Recording URI set to:', recording_uri);
 
-      // Send to N8N for transcription (async, don't wait)
       const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
-      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
+      // Step 1: Automatic transcription with OpenAI (always, if configured)
+      newTranscript = await transcribeAudio(audioPath);
+
+      // Step 2: OPTIONAL - Send to N8N for power users with custom integrations
+      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
       if (n8nWebhookUrl) {
         webhook_status = 'sent';
-        console.log('📤 Sending complete contact data to N8N webhook for processing (update)...');
+        console.log('📤 Sending complete contact data to N8N webhook (optional power user feature)...');
         sendToN8N(audioPath, { name, phone, email }, photoUrl, contactId, req.userId).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {
         webhook_status = 'not_configured';
-        console.log('⚠️ N8N_WEBHOOK_URL not configured - skipping webhook');
+        console.log('ℹ️ N8N_WEBHOOK_URL not configured - skipping optional webhook');
       }
     }
 
@@ -310,7 +361,7 @@ router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) =>
       photo_url: photoUrl !== undefined ? photoUrl : existingContact.photo_url,
       recording_uri,
       has_recording,
-      transcript: existingContact.transcript,
+      transcript: newTranscript || existingContact.transcript, // Use new transcript if available
       analysis: existingContact.analysis
     };
 
