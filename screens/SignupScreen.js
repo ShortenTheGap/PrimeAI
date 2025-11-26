@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import API from '../config/api';
 
 const SignupScreen = ({ navigation, onSignupSuccess }) => {
   const [email, setEmail] = useState('');
@@ -44,7 +45,8 @@ const SignupScreen = ({ navigation, onSignupSuccess }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/register`, {
+      console.log('📝 Attempting signup to:', API.API_URL);
+      const response = await fetch(`${API.API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
