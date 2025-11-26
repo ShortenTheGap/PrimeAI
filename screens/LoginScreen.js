@@ -15,6 +15,7 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -73,16 +74,24 @@ const LoginScreen = ({ navigation, onLoginSuccess }) => {
             editable={!loading}
           />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#64748b"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="password"
-            editable={!loading}
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor="#64748b"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoComplete="password"
+              editable={!loading}
+            />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Text style={styles.eyeIconText}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -144,6 +153,28 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 16,
     color: '#fff',
+  },
+  passwordContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  passwordInput: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    padding: 16,
+    paddingRight: 50,
+    fontSize: 16,
+    color: '#fff',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+  },
+  eyeIconText: {
+    fontSize: 20,
   },
   button: {
     backgroundColor: '#3b82f6',
