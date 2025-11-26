@@ -153,7 +153,7 @@ const SettingsScreen = () => {
     // Mock contact data
     const mockContact = {
       name: 'John Doe',
-      phone: '+1234567890',
+      phone: '+14255432406',
       email: 'john.doe@example.com',
     };
 

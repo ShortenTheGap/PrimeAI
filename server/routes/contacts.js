@@ -74,7 +74,7 @@ const upload = multer({
 });
 
 // Send audio to N8N for transcription
-const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = null) => {
+const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = null, userId = null) => {
   try {
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
@@ -91,6 +91,7 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = nu
     const payload = {
       action: 'update',  // Update action for voice note transcription
       contact_id: contactId,  // CRITICAL: Include contact_id so N8N can send transcript back
+      user_id: userId,  // CRITICAL: Include user_id so N8N can send transcript back to correct user
       contact: {
         name: contactData.name,
         phone: contactData.phone || null,
@@ -106,6 +107,7 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = nu
     console.log('📤 Sending complete payload to N8N:', {
       action: payload.action,
       contact_id: contactId,
+      user_id: userId,
       contact: payload.contact.name,
       hasRecording: true,
       hasPhoto: !!photoUrl,
@@ -193,7 +195,7 @@ router.post('/', authenticateUser, upload.single('audio'), async (req, res) => {
       if (n8nWebhookUrl) {
         webhook_status = 'sent';
         console.log('📤 Sending complete contact data to N8N webhook for processing...');
-        sendToN8N(audioPath, { name, phone, email }, photoUrl, newContact.contact_id).catch(err => {
+        sendToN8N(audioPath, { name, phone, email }, photoUrl, newContact.contact_id, req.userId).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {
@@ -282,7 +284,7 @@ router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) =>
       if (n8nWebhookUrl) {
         webhook_status = 'sent';
         console.log('📤 Sending complete contact data to N8N webhook for processing (update)...');
-        sendToN8N(audioPath, { name, phone, email }, photoUrl, contactId).catch(err => {
+        sendToN8N(audioPath, { name, phone, email }, photoUrl, contactId, req.userId).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {
