@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import ContactMonitorService from '../services/ContactMonitorService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
+import userService from '../services/UserService';
 import API from '../config/api';
 
 const SettingsScreen = () => {
@@ -22,24 +23,53 @@ const SettingsScreen = () => {
   const [masterFlowUrl, setMasterFlowUrl] = useState('');
   const [cloudinaryCloudName, setCloudinaryCloudName] = useState('');
   const [cloudinaryUploadPreset, setCloudinaryUploadPreset] = useState('');
+  const [userInfo, setUserInfo] = useState(null);
 
   useEffect(() => {
     checkPermissions();
     loadSettings();
+    loadUserInfo();
   }, []);
+
+  const loadUserInfo = async () => {
+    const user = userService.getUser();
+    const token = await userService.getToken();
+    if (user || token) {
+      setUserInfo(user);
+    }
+  };
 
   const loadSettings = async () => {
     try {
       const savedUrl = await AsyncStorage.getItem('@webhook:master_flow');
       const savedCloudName = await AsyncStorage.getItem('@cloudinary:cloud_name');
       const savedUploadPreset = await AsyncStorage.getItem('@cloudinary:upload_preset');
-      
+
       if (savedUrl) setMasterFlowUrl(savedUrl);
       if (savedCloudName) setCloudinaryCloudName(savedCloudName);
       if (savedUploadPreset) setCloudinaryUploadPreset(savedUploadPreset);
     } catch (error) {
       console.error('Error loading settings:', error);
     }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            if (global.handleLogout) {
+              await global.handleLogout();
+            }
+          },
+        },
+      ]
+    );
   };
 
   const saveMasterFlowUrl = async (value) => {
@@ -220,6 +250,28 @@ const SettingsScreen = () => {
           <Text style={styles.debugValue}>{__DEV__ ? 'true' : 'false'}</Text>
         </View>
       </View>
+
+      {/* Account Section */}
+      {userInfo && userInfo.email && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>👤 Account</Text>
+          </View>
+          <View style={styles.debugCard}>
+            <Text style={styles.debugLabel}>Email:</Text>
+            <Text style={styles.debugValue}>{userInfo.email}</Text>
+
+            <Text style={styles.debugLabel}>User ID:</Text>
+            <Text style={styles.debugValue}>{userInfo.userId}</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: '#ef4444', marginTop: 12 }]}
+            onPress={handleLogout}
+          >
+            <Text style={styles.testButtonText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Contact Monitoring Section */}
       <View style={styles.section}>

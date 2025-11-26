@@ -5,10 +5,12 @@ import axios from 'axios';
 import { API_URL } from '../config/api';
 
 const USER_STORAGE_KEY = '@primeai:user';
+const TOKEN_STORAGE_KEY = '@primeai:token';
 
 class UserService {
   constructor() {
     this.currentUser = null;
+    this.authToken = null;
   }
 
   /**
@@ -115,12 +117,67 @@ class UserService {
   }
 
   /**
+   * Save authentication token
+   */
+  async saveToken(token) {
+    this.authToken = token;
+    await AsyncStorage.setItem(TOKEN_STORAGE_KEY, token);
+  }
+
+  /**
+   * Get authentication token
+   */
+  async getToken() {
+    if (this.authToken) {
+      return this.authToken;
+    }
+    this.authToken = await AsyncStorage.getItem(TOKEN_STORAGE_KEY);
+    return this.authToken;
+  }
+
+  /**
+   * Check if user is authenticated (has valid token or device-based user)
+   */
+  async isAuthenticated() {
+    const token = await this.getToken();
+    const storedUser = await AsyncStorage.getItem(USER_STORAGE_KEY);
+    return !!(token || storedUser);
+  }
+
+  /**
+   * Login with email and password
+   */
+  async login(token, user) {
+    this.currentUser = {
+      userId: user.userId,
+      email: user.email,
+      authMethod: 'email'
+    };
+    this.authToken = token;
+
+    await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(this.currentUser));
+    await AsyncStorage.setItem(TOKEN_STORAGE_KEY, token);
+
+    console.log('✅ User logged in:', this.currentUser.email);
+    return this.currentUser;
+  }
+
+  /**
+   * Logout user
+   */
+  async logout() {
+    this.currentUser = null;
+    this.authToken = null;
+    await AsyncStorage.removeItem(USER_STORAGE_KEY);
+    await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
+    console.log('👋 User logged out');
+  }
+
+  /**
    * Clear user data (for testing/logout)
    */
   async clearUser() {
-    this.currentUser = null;
-    await AsyncStorage.removeItem(USER_STORAGE_KEY);
-    console.log('🗑️ User data cleared');
+    await this.logout();
   }
 }
 

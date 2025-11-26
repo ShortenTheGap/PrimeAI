@@ -5,18 +5,40 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 const FormData = require('form-data');
+const jwt = require('jsonwebtoken');
 const db = require('../database/db');
 
-// Middleware to extract and verify user_id from headers
-const authenticateUser = (req, res, next) => {
-  const userId = req.headers['x-user-id'];
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 
-  if (!userId) {
+// Middleware to extract and verify user authentication (JWT or device-based)
+const authenticateUser = async (req, res, next) => {
+  try {
+    // Check for JWT token first (email/password auth)
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.userId = decoded.userId;
+        return next();
+      } catch (error) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+    }
+
+    // Fallback to device-based auth (x-user-id header) for backward compatibility
+    const userId = req.headers['x-user-id'];
+    if (userId) {
+      req.userId = userId;
+      return next();
+    }
+
+    // No valid authentication found
     return res.status(401).json({ error: 'User authentication required' });
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return res.status(401).json({ error: 'Authentication failed' });
   }
-
-  req.userId = userId;
-  next();
 };
 
 // Configure multer for file uploads

@@ -23,7 +23,10 @@ const db = require('./database/db');
 
 // Routes
 const contactsRouter = require('./routes/contacts');
+const authRouter = require('./routes/auth');
+
 app.use('/api/contacts', contactsRouter);
+app.use('/api/auth', authRouter);
 
 // User Management Endpoints
 // Register or verify a user by device ID

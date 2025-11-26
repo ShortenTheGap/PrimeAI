@@ -10,15 +10,28 @@ const apiClient = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor to add user_id header
+// Request interceptor to add authentication headers
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     try {
-      const userId = userService.getUserId();
-      config.headers['x-user-id'] = userId;
-      console.log('📤 API Request:', config.method?.toUpperCase(), config.url, '| User:', userId);
+      // Try to get JWT token first (email/password auth)
+      const token = await userService.getToken();
+
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+        console.log('📤 API Request:', config.method?.toUpperCase(), config.url, '| Auth: JWT');
+      } else {
+        // Fallback to device-based auth
+        try {
+          const userId = userService.getUserId();
+          config.headers['x-user-id'] = userId;
+          console.log('📤 API Request:', config.method?.toUpperCase(), config.url, '| User:', userId);
+        } catch (error) {
+          console.warn('⚠️ No authentication available for API request:', config.url);
+        }
+      }
     } catch (error) {
-      console.warn('⚠️ User not initialized for API request:', config.url);
+      console.warn('⚠️ Error setting auth headers:', error);
     }
     return config;
   },

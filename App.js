@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Platform, View, Text, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
@@ -8,6 +9,8 @@ import * as Notifications from 'expo-notifications';
 import ContactCaptureScreen from './screens/ContactCaptureScreen';
 import ContactListScreen from './screens/ContactListScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import LoginScreen from './screens/LoginScreen';
+import SignupScreen from './screens/SignupScreen';
 
 // Import services
 import ContactMonitorService from './services/ContactMonitorService';
@@ -15,10 +18,12 @@ import BackgroundTaskService from './services/BackgroundTaskService';
 import userService from './services/UserService';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
 const App = () => {
   const navigationRef = React.useRef(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Global flag to track unsaved changes in ContactCapture
   global.hasUnsavedContactChanges = false;
@@ -63,41 +68,89 @@ const App = () => {
 
   const initializeApp = async () => {
     try {
-      // FIRST: Initialize user (device-based authentication)
-      const user = await userService.initializeUser();
-      console.log('✅ User authenticated:', user.userId);
-      if (user.isNewUser) {
-        console.log('🎉 Welcome! This is a new device.');
-      }
+      // Check if user is already authenticated
+      const authenticated = await userService.isAuthenticated();
 
-      // Initialize foreground contact monitoring
-      await ContactMonitorService.initialize();
-      console.log('✅ Foreground monitoring initialized');
+      if (authenticated) {
+        // Load stored user data
+        const token = await userService.getToken();
+        if (token) {
+          // JWT auth - load user from token
+          const storedUser = await userService.getUser();
+          if (storedUser) {
+            console.log('✅ User authenticated with JWT:', storedUser.email);
+            setIsAuthenticated(true);
+          }
+        } else {
+          // Device-based auth - initialize user
+          const user = await userService.initializeUser();
+          console.log('✅ User authenticated (device-based):', user.userId);
+          if (user.isNewUser) {
+            console.log('🎉 Welcome! This is a new device.');
+          }
+          setIsAuthenticated(true);
+        }
 
-      // Register navigation callback for auto-navigation when new contact detected in foreground
-      ContactMonitorService.setNavigationCallback((contactData) => {
-        console.log('🔄 Auto-navigating to Contact Capture with:', contactData.name);
-        navigationRef.current?.navigate('ContactCapture', {
-          contactData: contactData,
-          mode: 'add'
+        // Initialize services only after authentication
+        await ContactMonitorService.initialize();
+        console.log('✅ Foreground monitoring initialized');
+
+        ContactMonitorService.setNavigationCallback((contactData) => {
+          console.log('🔄 Auto-navigating to Contact Capture with:', contactData.name);
+          navigationRef.current?.navigate('ContactCapture', {
+            contactData: contactData,
+            mode: 'add'
+          });
         });
-      });
 
-      // Initialize background monitoring (works in native builds, not Expo Go)
-      const backgroundEnabled = await BackgroundTaskService.register();
-      if (backgroundEnabled) {
-        console.log('✅ Background monitoring enabled - app will check contacts every 15 minutes');
+        const backgroundEnabled = await BackgroundTaskService.register();
+        if (backgroundEnabled) {
+          console.log('✅ Background monitoring enabled');
+        } else {
+          console.log('⚠️ Background monitoring not available');
+        }
       } else {
-        console.log('⚠️ Background monitoring not available - foreground monitoring only');
+        console.log('👋 No authentication found - showing login screen');
+        setIsAuthenticated(false);
       }
 
       console.log('✅ App initialized successfully');
-      setIsInitialized(true); // Allow app to render
+      setIsInitialized(true);
     } catch (error) {
       console.error('❌ App initialization error:', error);
-      setIsInitialized(true); // Still render app even if init fails
+      setIsInitialized(true);
     }
   };
+
+  // Handle successful login
+  const handleLoginSuccess = async (token, user) => {
+    await userService.login(token, user);
+    setIsAuthenticated(true);
+
+    // Initialize services after login
+    await ContactMonitorService.initialize();
+    ContactMonitorService.setNavigationCallback((contactData) => {
+      navigationRef.current?.navigate('ContactCapture', {
+        contactData: contactData,
+        mode: 'add'
+      });
+    });
+    await BackgroundTaskService.register();
+  };
+
+  // Handle successful signup
+  const handleSignupSuccess = async (token, user) => {
+    await handleLoginSuccess(token, user);
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    await userService.logout();
+    setIsAuthenticated(false);
+  };
+
+  // Make handlers globally accessible
+  global.handleLogout = handleLogout;
 
   // Make navigation globally accessible for notifications
   global.navigateToContextCapture = (contactData) => {
@@ -108,21 +161,25 @@ const App = () => {
     });
   };
 
-  // Show loading screen while initializing
-  if (!isInitialized) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' }}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16 }}>
-          Initializing...
-        </Text>
-      </View>
-    );
-  }
+  // Auth Stack Navigator
+  const AuthStack = () => (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="Login">
+        {props => <LoginScreen {...props} onLoginSuccess={handleLoginSuccess} />}
+      </Stack.Screen>
+      <Stack.Screen name="Signup">
+        {props => <SignupScreen {...props} onSignupSuccess={handleSignupSuccess} />}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
 
-  return (
-    <NavigationContainer ref={navigationRef}>
-      <Tab.Navigator
+  // Main App Tab Navigator
+  const MainApp = () => (
+    <Tab.Navigator
         initialRouteName="ContactList"
         screenOptions={{
           tabBarShowLabel: false,
@@ -242,6 +299,23 @@ const App = () => {
           })}
         />
       </Tab.Navigator>
+  );
+
+  // Show loading screen while initializing
+  if (!isInitialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' }}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16 }}>
+          Initializing...
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer ref={navigationRef}>
+      {isAuthenticated ? <MainApp /> : <AuthStack />}
     </NavigationContainer>
   );
 };

@@ -22,7 +22,9 @@ if (usePostgres) {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
           user_id TEXT PRIMARY KEY,
-          device_id TEXT UNIQUE NOT NULL,
+          email TEXT UNIQUE,
+          password_hash TEXT,
+          device_id TEXT UNIQUE,
           device_name TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -71,6 +73,31 @@ if (usePostgres) {
         ALTER TABLE contacts ALTER COLUMN user_id SET NOT NULL
       `);
 
+      // MIGRATION: Add email and password_hash columns to users if they don't exist
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'email'
+          ) THEN
+            ALTER TABLE users ADD COLUMN email TEXT UNIQUE;
+          END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'password_hash'
+          ) THEN
+            ALTER TABLE users ADD COLUMN password_hash TEXT;
+          END IF;
+        END $$;
+      `);
+
+      // MIGRATION: Make device_id nullable for email/password users
+      await pool.query(`
+        ALTER TABLE users ALTER COLUMN device_id DROP NOT NULL
+      `);
+
       // Create index for faster user queries
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id)
@@ -116,6 +143,27 @@ if (usePostgres) {
 
     getUserByDeviceId: async (deviceId) => {
       const result = await pool.query('SELECT * FROM users WHERE device_id = $1', [deviceId]);
+      return result.rows[0];
+    },
+
+    getUserByEmail: async (email) => {
+      const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+      return result.rows[0];
+    },
+
+    getUserById: async (userId) => {
+      const result = await pool.query('SELECT * FROM users WHERE user_id = $1', [userId]);
+      return result.rows[0];
+    },
+
+    createUserWithPassword: async (email, passwordHash) => {
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const result = await pool.query(
+        `INSERT INTO users (user_id, email, password_hash)
+         VALUES ($1, $2, $3)
+         RETURNING user_id, email, created_at`,
+        [userId, email.toLowerCase(), passwordHash]
+      );
       return result.rows[0];
     },
 
@@ -180,7 +228,9 @@ if (usePostgres) {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS users (
       user_id TEXT PRIMARY KEY,
-      device_id TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE,
+      password_hash TEXT,
+      device_id TEXT UNIQUE,
       device_name TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -222,6 +272,26 @@ if (usePostgres) {
     getUserByDeviceId: async (deviceId) => {
       const stmt = sqlite.prepare('SELECT * FROM users WHERE device_id = ?');
       return stmt.get(deviceId);
+    },
+
+    getUserByEmail: async (email) => {
+      const stmt = sqlite.prepare('SELECT * FROM users WHERE email = ?');
+      return stmt.get(email);
+    },
+
+    getUserById: async (userId) => {
+      const stmt = sqlite.prepare('SELECT * FROM users WHERE user_id = ?');
+      return stmt.get(userId);
+    },
+
+    createUserWithPassword: async (email, passwordHash) => {
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const stmt = sqlite.prepare(`
+        INSERT INTO users (user_id, email, password_hash)
+        VALUES (?, ?, ?)
+      `);
+      stmt.run(userId, email.toLowerCase(), passwordHash);
+      return db.getUserByEmail(email);
     },
 
     // Get all contacts for a user
