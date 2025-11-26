@@ -87,11 +87,20 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = nu
     const audioBuffer = fs.readFileSync(audioPath);
     const audioBase64 = `data:audio/m4a;base64,${audioBuffer.toString('base64')}`;
 
+    // Get backend URL from environment or construct it
+    const backendUrl = process.env.BACKEND_URL || process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : 'http://localhost:3000';
+
+    // Build callback URL for N8N to send transcript back
+    const callbackUrl = `${backendUrl}/api/contacts/${contactId}/transcript`;
+
     // Build complete payload matching the mobile app webhook format
     const payload = {
       action: 'update',  // Update action for voice note transcription
       contact_id: contactId,  // CRITICAL: Include contact_id so N8N can send transcript back
       user_id: userId,  // CRITICAL: Include user_id so N8N can send transcript back to correct user
+      callback_url: callbackUrl,  // CRITICAL: URL where N8N should POST the transcript
       contact: {
         name: contactData.name,
         phone: contactData.phone || null,
@@ -108,6 +117,7 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = nu
       action: payload.action,
       contact_id: contactId,
       user_id: userId,
+      callback_url: callbackUrl,
       contact: payload.contact.name,
       hasRecording: true,
       hasPhoto: !!photoUrl,
