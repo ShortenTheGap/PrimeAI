@@ -29,6 +29,7 @@ const SettingsScreen = () => {
     checkPermissions();
     loadSettings();
     loadUserInfo();
+    loadMonitoringState();
   }, []);
 
   // Debug: Monitor masterFlowUrl state changes
@@ -58,6 +59,16 @@ const SettingsScreen = () => {
       if (savedUploadPreset) setCloudinaryUploadPreset(savedUploadPreset);
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const loadMonitoringState = async () => {
+    try {
+      const enabled = await ContactMonitorService.getMonitoringState();
+      console.log('📱 Loading monitoring state:', enabled);
+      setMonitoringEnabled(enabled);
+    } catch (error) {
+      console.error('Error loading monitoring state:', error);
     }
   };
 
@@ -133,9 +144,11 @@ const SettingsScreen = () => {
     if (value) {
       await ContactMonitorService.initialize();
       await BackgroundTaskService.register();
+      console.log('✅ Monitoring enabled by user');
     } else {
-      ContactMonitorService.stopMonitoring();
+      await ContactMonitorService.stopMonitoring();
       await BackgroundTaskService.unregister();
+      console.log('⏸️ Monitoring disabled by user');
     }
 
     setMonitoringEnabled(value);

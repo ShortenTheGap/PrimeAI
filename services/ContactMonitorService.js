@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import { AppState } from 'react-native';
 
 const STORAGE_KEY = '@context_crm:known_contacts';
+const MONITORING_STATE_KEY = '@context_crm:monitoring_enabled';
 
 class ContactMonitorService {
   constructor() {
@@ -87,12 +88,37 @@ class ContactMonitorService {
     }
   }
 
+  async saveMonitoringState(enabled) {
+    try {
+      await AsyncStorage.setItem(MONITORING_STATE_KEY, JSON.stringify(enabled));
+      console.log(`💾 Monitoring state saved: ${enabled}`);
+    } catch (error) {
+      console.error('Failed to save monitoring state:', error);
+    }
+  }
+
+  async getMonitoringState() {
+    try {
+      const stored = await AsyncStorage.getItem(MONITORING_STATE_KEY);
+      if (stored !== null) {
+        const enabled = JSON.parse(stored);
+        console.log(`📂 Loaded monitoring state: ${enabled}`);
+        return enabled;
+      }
+      return false; // Default to false if not set
+    } catch (error) {
+      console.error('Failed to load monitoring state:', error);
+      return false;
+    }
+  }
+
   async startMonitoring() {
     if (this.isMonitoring) {
       return;
     }
 
     this.isMonitoring = true;
+    await this.saveMonitoringState(true);
 
     // Start interval checking (every 5 seconds when app is active)
     this.checkInterval = setInterval(async () => {
@@ -162,7 +188,7 @@ class ContactMonitorService {
     }
   }
 
-  stopMonitoring() {
+  async stopMonitoring() {
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
@@ -179,6 +205,7 @@ class ContactMonitorService {
     }
 
     this.isMonitoring = false;
+    await this.saveMonitoringState(false);
     console.log('Contact monitoring stopped');
   }
 

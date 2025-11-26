@@ -78,10 +78,7 @@ const App = () => {
           console.log('✅ User authenticated with JWT:', storedUser.email);
           setIsAuthenticated(true);
 
-          // Initialize services after authentication
-          await ContactMonitorService.initialize();
-          console.log('✅ Foreground monitoring initialized');
-
+          // Always set navigation callback first
           ContactMonitorService.setNavigationCallback((contactData) => {
             console.log('🔄 Auto-navigating to Contact Capture with:', contactData.name);
             navigationRef.current?.navigate('ContactCapture', {
@@ -90,11 +87,23 @@ const App = () => {
             });
           });
 
-          const backgroundEnabled = await BackgroundTaskService.register();
-          if (backgroundEnabled) {
-            console.log('✅ Background monitoring enabled');
+          // Check if monitoring was previously enabled
+          const monitoringEnabled = await ContactMonitorService.getMonitoringState();
+          console.log('📊 Monitoring state from storage:', monitoringEnabled);
+
+          if (monitoringEnabled) {
+            // User had monitoring enabled - restore it
+            await ContactMonitorService.initialize();
+            console.log('✅ Foreground monitoring restored');
+
+            const backgroundEnabled = await BackgroundTaskService.register();
+            if (backgroundEnabled) {
+              console.log('✅ Background monitoring enabled');
+            } else {
+              console.log('⚠️ Background monitoring not available');
+            }
           } else {
-            console.log('⚠️ Background monitoring not available');
+            console.log('ℹ️ Monitoring not enabled - user can enable in Settings');
           }
         } else {
           // Token exists but no user data - clear and show login
@@ -121,15 +130,24 @@ const App = () => {
     await userService.login(token, user);
     setIsAuthenticated(true);
 
-    // Initialize services after login
-    await ContactMonitorService.initialize();
+    // Set navigation callback
     ContactMonitorService.setNavigationCallback((contactData) => {
       navigationRef.current?.navigate('ContactCapture', {
         contactData: contactData,
         mode: 'add'
       });
     });
-    await BackgroundTaskService.register();
+
+    // Check if monitoring was previously enabled
+    const monitoringEnabled = await ContactMonitorService.getMonitoringState();
+    if (monitoringEnabled) {
+      // Restore monitoring if it was enabled before
+      await ContactMonitorService.initialize();
+      await BackgroundTaskService.register();
+      console.log('✅ Monitoring restored after login');
+    } else {
+      console.log('ℹ️ Monitoring not enabled - user can enable in Settings');
+    }
   };
 
   // Handle successful signup
