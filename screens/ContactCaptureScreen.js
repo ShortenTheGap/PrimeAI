@@ -1245,25 +1245,29 @@ const ContactCaptureScreen = () => {
     try {
       // Check delivery method preference
       const deliveryMethod = await AsyncStorage.getItem('@calendar:delivery_method') || 'native';
-      console.log('📅 Calendar delivery method:', deliveryMethod);
+      console.log('📅 Calendar delivery method from storage:', deliveryMethod);
 
       if (deliveryMethod === 'n8n') {
-        // Use N8N webhook
+        console.log('🔗 Using N8N webhook for calendar event');
         await sendCalendarWebhook();
       } else {
-        // Use native calendar
+        console.log('📱 Using NATIVE calendar for event (no N8N involved)');
         await createNativeCalendarEvent();
       }
     } catch (error) {
-      console.error('Error handling calendar event:', error);
+      console.error('❌ Error handling calendar event:', error);
       Alert.alert('❌ Error', `Failed to create calendar event: ${error.message}`);
     }
   };
 
   const createNativeCalendarEvent = async () => {
     try {
+      console.log('📱 createNativeCalendarEvent started - this does NOT use N8N');
+
       // Request calendar permissions
       const { status } = await Calendar.requestCalendarPermissionsAsync();
+      console.log('📅 Calendar permission status:', status);
+
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Calendar permission is required to create events.');
         return;
@@ -1271,12 +1275,16 @@ const ContactCaptureScreen = () => {
 
       // Get default calendar
       const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      console.log('📅 Found calendars:', calendars.length);
+
       const defaultCalendar = calendars.find(cal => cal.isPrimary) || calendars[0];
 
       if (!defaultCalendar) {
         Alert.alert('Error', 'No calendar found on this device.');
         return;
       }
+
+      console.log('📅 Using calendar:', defaultCalendar.title);
 
       // Create event details
       const eventTitle = `Follow up: ${formData.name || 'New Contact'}`;
@@ -1290,22 +1298,25 @@ const ContactCaptureScreen = () => {
       const endDate = new Date(startDate);
       endDate.setHours(11, 0, 0, 0);
 
+      console.log('📅 Creating event:', eventTitle);
+      console.log('📅 Start time:', startDate.toISOString());
+
       // Create event
       const eventId = await Calendar.createEventAsync(defaultCalendar.id, {
         title: eventTitle,
         startDate,
         endDate,
         notes: eventNotes,
-        timeZone: 'America/New_York', // You might want to make this configurable
+        timeZone: 'America/New_York',
       });
 
-      console.log('✅ Calendar event created:', eventId);
+      console.log('✅ Native calendar event created successfully! ID:', eventId);
       Alert.alert(
         '✅ Success!',
-        `Calendar event created for tomorrow at 10 AM\n\n"${eventTitle}"`
+        `Calendar event created in your device calendar for tomorrow at 10 AM\n\n"${eventTitle}"\n\nThis was created NATIVELY - no N8N involved.`
       );
     } catch (error) {
-      console.error('Error creating native calendar event:', error);
+      console.error('❌ Error creating native calendar event:', error);
       Alert.alert('❌ Error', `Failed to create calendar event: ${error.message}`);
     }
   };
