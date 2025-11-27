@@ -98,6 +98,22 @@ if (usePostgres) {
         ALTER TABLE users ALTER COLUMN device_id DROP NOT NULL
       `);
 
+      // MIGRATION: Create legacy users for existing contacts before adding foreign key
+      await pool.query(`
+        INSERT INTO users (user_id, device_id, email, password_hash, created_at)
+        SELECT DISTINCT
+          user_id,
+          user_id, -- use user_id as device_id for legacy users
+          user_id || '@legacy.local',
+          'no_password_legacy_user',
+          CURRENT_TIMESTAMP
+        FROM contacts
+        WHERE user_id LIKE 'legacy_user_%'
+        AND user_id NOT IN (SELECT user_id FROM users)
+        ON CONFLICT (user_id) DO NOTHING
+      `);
+      console.log('✅ Legacy users created for existing contacts');
+
       // Create index for faster user queries
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id)
