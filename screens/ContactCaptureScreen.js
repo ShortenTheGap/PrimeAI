@@ -202,8 +202,8 @@ const ContactCaptureScreen = () => {
         recordingChanged,
         photoChanged,
         hasChanges,
-        current: { name: formData.name, phone: formData.phone, email: formData.email },
-        original: { name: originalData.name, phone: originalData.phone, email: originalData.email },
+        current: { name: formData.name, phone: formData.phone, email: formData.email, photoUrl },
+        original: { name: originalData.name, phone: originalData.phone, email: originalData.email, photoUrl: originalData.photoUrl },
       });
 
       if (hasChanges) {
@@ -1111,22 +1111,32 @@ const ContactCaptureScreen = () => {
     // Subscribe to navigation focus events
     const unsubscribeBlur = navigation.addListener('blur', () => {
       console.log('👋 ContactCaptureScreen lost focus - cleaning up global flags');
+      console.log('  - global.hasUnsavedContactChanges:', global.hasUnsavedContactChanges);
+
       // Clear flags immediately when leaving the screen
-      // Only keep them if there are actual unsaved changes
-      if (!hasUnsavedChanges) {
-        global.hasUnsavedContactChanges = false;
+      // Use the GLOBAL flag (not closure variable) to check current state
+      if (!global.hasUnsavedContactChanges) {
+        console.log('  - No unsaved changes, clearing alert function');
         global.showUnsavedChangesAlert = null;
+      } else {
+        console.log('  - Has unsaved changes, keeping alert function');
       }
     });
 
     return () => {
       console.log('🧹 ContactCaptureScreen unmounting - final cleanup');
+      console.log('  - global.hasUnsavedContactChanges:', global.hasUnsavedContactChanges);
       unsubscribeBlur();
-      // Force clear on unmount regardless
-      global.hasUnsavedContactChanges = false;
-      global.showUnsavedChangesAlert = null;
+
+      // Only force clear on unmount if no unsaved changes
+      if (!global.hasUnsavedContactChanges) {
+        console.log('  - No unsaved changes, clearing globals');
+        global.showUnsavedChangesAlert = null;
+      } else {
+        console.log('  - Has unsaved changes, keeping globals for tab navigation');
+      }
     };
-  }, [hasUnsavedChanges, navigation]);
+  }, [navigation]);
 
   const mode = route.params?.mode || 'add';
   const prefilledContact = route.params?.contactData;
