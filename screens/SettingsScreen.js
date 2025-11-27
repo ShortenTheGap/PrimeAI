@@ -21,8 +21,6 @@ const SettingsScreen = () => {
   const [monitoringEnabled, setMonitoringEnabled] = useState(false);
   const [hasPermissions, setHasPermissions] = useState(false);
   const [masterFlowUrl, setMasterFlowUrl] = useState('');
-  const [cloudinaryCloudName, setCloudinaryCloudName] = useState('');
-  const [cloudinaryUploadPreset, setCloudinaryUploadPreset] = useState('');
   const [userInfo, setUserInfo] = useState(null);
 
   useEffect(() => {
@@ -50,13 +48,9 @@ const SettingsScreen = () => {
   const loadSettings = async () => {
     try {
       const savedUrl = await AsyncStorage.getItem('@webhook:master_flow');
-      const savedCloudName = await AsyncStorage.getItem('@cloudinary:cloud_name');
-      const savedUploadPreset = await AsyncStorage.getItem('@cloudinary:upload_preset');
 
       console.log('📥 Loading N8N URL from AsyncStorage:', savedUrl);
       if (savedUrl) setMasterFlowUrl(savedUrl);
-      if (savedCloudName) setCloudinaryCloudName(savedCloudName);
-      if (savedUploadPreset) setCloudinaryUploadPreset(savedUploadPreset);
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -102,23 +96,6 @@ const SettingsScreen = () => {
     }
   };
 
-  const saveCloudinaryCloudName = async (value) => {
-    setCloudinaryCloudName(value);
-    try {
-      await AsyncStorage.setItem('@cloudinary:cloud_name', value);
-    } catch (error) {
-      console.error('Error saving cloudinary cloud name:', error);
-    }
-  };
-
-  const saveCloudinaryUploadPreset = async (value) => {
-    setCloudinaryUploadPreset(value);
-    try {
-      await AsyncStorage.setItem('@cloudinary:upload_preset', value);
-    } catch (error) {
-      console.error('Error saving cloudinary upload preset:', error);
-    }
-  };
 
   const checkPermissions = async () => {
     const granted = await ContactMonitorService.requestPermissions();
@@ -170,8 +147,8 @@ const SettingsScreen = () => {
     // Mock base64 audio (very short sample)
     const mockAudioBase64 = 'data:audio/mp4;base64,AAAAGGZ0eXBNNEEgAAAAAE00QSBpc29tAAAA';
 
-    // Mock photo URL
-    const mockPhotoUrl = 'https://res.cloudinary.com/demo/image/upload/sample.jpg';
+    // Mock photo URL (using backend storage)
+    const mockPhotoUrl = `${API.API_URL}/uploads/photos/sample-photo.jpg`;
 
     // Mock contact data
     const mockContact = {
@@ -395,41 +372,18 @@ const SettingsScreen = () => {
         )}
       </View>
 
-      {/* Cloudinary Configuration Section */}
+      {/* Photo Storage - Now handled automatically by backend */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>📸 Image Upload Configuration</Text>
+          <Text style={styles.sectionTitle}>📸 Photo Storage</Text>
         </View>
 
         <View style={styles.webhookCard}>
-          <Text style={styles.webhookLabel}>Cloudinary Cloud Name</Text>
-          <TextInput
-            style={styles.webhookInput}
-            value={cloudinaryCloudName}
-            onChangeText={saveCloudinaryCloudName}
-            placeholder="dxxxxxx"
-            placeholderTextColor="#64748b"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Text style={styles.webhookHint}>
-            Found in your Cloudinary Dashboard (cloudinary.com)
+          <Text style={styles.webhookDescription}>
+            Photos are automatically uploaded and stored on your backend server. No additional configuration needed!
           </Text>
-        </View>
-
-        <View style={styles.webhookCard}>
-          <Text style={styles.webhookLabel}>Cloudinary Upload Preset</Text>
-          <TextInput
-            style={styles.webhookInput}
-            value={cloudinaryUploadPreset}
-            onChangeText={saveCloudinaryUploadPreset}
-            placeholder="your_unsigned_preset"
-            placeholderTextColor="#64748b"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
           <Text style={styles.webhookHint}>
-            Create an unsigned upload preset in Cloudinary Settings → Upload
+            ✅ Photos are stored securely and can be included in SMS messages to your contacts.
           </Text>
         </View>
       </View>

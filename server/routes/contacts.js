@@ -47,10 +47,21 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
-// Configure multer for file uploads
+// Configure multer for file uploads (audio and photos)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads');
+    // Organize uploads into subdirectories based on file type
+    const baseDir = path.join(__dirname, '../../uploads');
+    let uploadDir;
+
+    if (file.fieldname === 'audio') {
+      uploadDir = path.join(baseDir, 'audio');
+    } else if (file.fieldname === 'photo') {
+      uploadDir = path.join(baseDir, 'photos');
+    } else {
+      uploadDir = baseDir;
+    }
+
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -71,7 +82,14 @@ const upload = multer({
       if (file.mimetype.startsWith('audio/')) {
         cb(null, true);
       } else {
-        cb(new Error('Only audio files are allowed'));
+        cb(new Error('Only audio files are allowed for audio field'));
+      }
+    } else if (file.fieldname === 'photo') {
+      // Accept image files
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed for photo field'));
       }
     } else {
       cb(null, true);
@@ -127,6 +145,13 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = nu
     // Build callback URL for N8N to send transcript back
     const callbackUrl = `${backendUrl}/api/contacts/${contactId}/transcript`;
 
+    // Convert relative photo URL to absolute URL for SMS messages
+    let fullPhotoUrl = photoUrl;
+    if (photoUrl && photoUrl.startsWith('/uploads/')) {
+      fullPhotoUrl = `${backendUrl}${photoUrl}`;
+      console.log('📸 Converting photo URL for SMS:', photoUrl, '→', fullPhotoUrl);
+    }
+
     // Build complete payload matching the mobile app webhook format
     const payload = {
       action: 'update',  // Update action for voice note transcription
@@ -140,8 +165,8 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = nu
       },
       audio_base64: audioBase64,
       hasRecording: true,
-      photoUrl: photoUrl || null,
-      hasPhoto: !!photoUrl,
+      photoUrl: fullPhotoUrl || null,
+      hasPhoto: !!fullPhotoUrl,
       timestamp: new Date().toISOString(),
     };
 
@@ -195,7 +220,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
 });
 
 // POST new contact (with authentication)
-router.post('/', authenticateUser, upload.single('audio'), async (req, res) => {
+router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'photo', maxCount: 1 }]), async (req, res) => {
   try {
     const { name, phone, email, photoUrl } = req.body;
 
@@ -205,11 +230,21 @@ router.post('/', authenticateUser, upload.single('audio'), async (req, res) => {
 
     let recording_uri = null;
     let has_recording = false;
+    let photo_url = photoUrl || null;
 
     // Handle audio file if uploaded
-    if (req.file) {
-      recording_uri = `/uploads/${req.file.filename}`;
+    if (req.files && req.files.audio && req.files.audio[0]) {
+      const audioFile = req.files.audio[0];
+      recording_uri = `/uploads/audio/${audioFile.filename}`;
       has_recording = true;
+      console.log('📁 Audio file uploaded:', audioFile.filename);
+    }
+
+    // Handle photo file if uploaded (replaces Cloudinary)
+    if (req.files && req.files.photo && req.files.photo[0]) {
+      const photoFile = req.files.photo[0];
+      photo_url = `/uploads/photos/${photoFile.filename}`;
+      console.log('📸 Photo uploaded locally:', photoFile.filename);
     }
 
     // Create contact first to get contact_id
@@ -217,7 +252,7 @@ router.post('/', authenticateUser, upload.single('audio'), async (req, res) => {
       name,
       phone: phone || null,
       email: email || null,
-      photo_url: photoUrl || null,
+      photo_url,
       recording_uri,
       has_recording,
       transcript: null,
@@ -231,8 +266,9 @@ router.post('/', authenticateUser, upload.single('audio'), async (req, res) => {
     let transcript = null;
 
     // Transcribe audio immediately if uploaded
-    if (req.file) {
-      const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
+    if (req.files && req.files.audio && req.files.audio[0]) {
+      const audioFile = req.files.audio[0];
+      const audioPath = path.join(__dirname, '../../uploads/audio', audioFile.filename);
 
       // Step 1: Automatic transcription with OpenAI (always, if configured)
       transcript = await transcribeAudio(audioPath);
@@ -251,7 +287,7 @@ router.post('/', authenticateUser, upload.single('audio'), async (req, res) => {
       if (n8nWebhookUrl) {
         webhook_status = 'sent';
         console.log('📤 Sending complete contact data to N8N webhook (optional power user feature)...');
-        sendToN8N(audioPath, { name, phone, email }, photoUrl, newContact.contact_id, req.userId).catch(err => {
+        sendToN8N(audioPath, { name, phone, email }, photo_url, newContact.contact_id, req.userId).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {
@@ -273,13 +309,14 @@ router.post('/', authenticateUser, upload.single('audio'), async (req, res) => {
 });
 
 // PUT update contact (with authentication)
-router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) => {
+router.put('/:id', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'photo', maxCount: 1 }]), async (req, res) => {
   try {
     const { name, phone, email, photoUrl } = req.body;
     const contactId = req.params.id;
 
     console.log('🔄 PUT /api/contacts/' + contactId, {
-      hasAudioFile: !!req.file,
+      hasAudioFile: !!(req.files && req.files.audio),
+      hasPhotoFile: !!(req.files && req.files.photo),
       name,
       phone,
       email,
@@ -310,16 +347,36 @@ router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) =>
       email: existingContact.email,
       has_recording: existingContact.has_recording,
       recording_uri: existingContact.recording_uri,
+      photo_url: existingContact.photo_url,
     });
 
     let recording_uri = existingContact.recording_uri;
     let has_recording = existingContact.has_recording;
+    let photo_url = photoUrl !== undefined ? photoUrl : existingContact.photo_url;
     let webhook_status = 'not_sent';
+
+    // Handle new photo file if uploaded
+    if (req.files && req.files.photo && req.files.photo[0]) {
+      const photoFile = req.files.photo[0];
+
+      // Delete old photo file if exists and it's local
+      if (existingContact.photo_url && existingContact.photo_url.startsWith('/uploads/')) {
+        const oldPath = path.join(__dirname, '../..', existingContact.photo_url);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+          console.log('🗑️ Deleted old photo:', existingContact.photo_url);
+        }
+      }
+
+      photo_url = `/uploads/photos/${photoFile.filename}`;
+      console.log('📸 New photo uploaded locally:', photoFile.filename);
+    }
 
     // Handle new audio file if uploaded
     let newTranscript = null;
-    if (req.file) {
-      console.log('🎙️ New audio file detected:', req.file.filename);
+    if (req.files && req.files.audio && req.files.audio[0]) {
+      const audioFile = req.files.audio[0];
+      console.log('🎙️ New audio file detected:', audioFile.filename);
 
       // Delete old audio file if exists
       if (existingContact.recording_uri) {
@@ -330,12 +387,12 @@ router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) =>
         }
       }
 
-      recording_uri = `/uploads/${req.file.filename}`;
+      recording_uri = `/uploads/audio/${audioFile.filename}`;
       has_recording = true;
 
       console.log('✅ Recording URI set to:', recording_uri);
 
-      const audioPath = path.join(__dirname, '../../uploads', req.file.filename);
+      const audioPath = path.join(__dirname, '../../uploads/audio', audioFile.filename);
 
       // Step 1: Automatic transcription with OpenAI (always, if configured)
       newTranscript = await transcribeAudio(audioPath);
@@ -345,7 +402,7 @@ router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) =>
       if (n8nWebhookUrl) {
         webhook_status = 'sent';
         console.log('📤 Sending complete contact data to N8N webhook (optional power user feature)...');
-        sendToN8N(audioPath, { name, phone, email }, photoUrl, contactId, req.userId).catch(err => {
+        sendToN8N(audioPath, { name, phone, email }, photo_url, contactId, req.userId).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {
@@ -358,7 +415,7 @@ router.put('/:id', authenticateUser, upload.single('audio'), async (req, res) =>
       name: name || existingContact.name,
       phone: phone !== undefined ? phone : existingContact.phone,
       email: email !== undefined ? email : existingContact.email,
-      photo_url: photoUrl !== undefined ? photoUrl : existingContact.photo_url,
+      photo_url,
       recording_uri,
       has_recording,
       transcript: newTranscript || existingContact.transcript, // Use new transcript if available

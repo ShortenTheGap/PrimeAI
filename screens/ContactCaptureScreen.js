@@ -495,7 +495,10 @@ const ContactCaptureScreen = () => {
     });
 
     if (!result.canceled) {
-      await uploadToCloudinary(result.assets[0].uri);
+      // Store local photo URI - will be uploaded to backend when saving contact
+      const localUri = result.assets[0].uri;
+      setPhotoUrl(localUri);
+      console.log('📸 Photo captured locally:', localUri);
     }
   };
 
@@ -514,57 +517,10 @@ const ContactCaptureScreen = () => {
     });
 
     if (!result.canceled) {
-      await uploadToCloudinary(result.assets[0].uri);
-    }
-  };
-
-  const uploadToCloudinary = async (imageUri) => {
-    try {
-      const CLOUDINARY_CLOUD_NAME_KEY = '@cloudinary:cloud_name';
-      const CLOUDINARY_UPLOAD_PRESET_KEY = '@cloudinary:upload_preset';
-
-      const cloudName = await AsyncStorage.getItem(CLOUDINARY_CLOUD_NAME_KEY);
-      const uploadPreset = await AsyncStorage.getItem(CLOUDINARY_UPLOAD_PRESET_KEY);
-
-      if (!cloudName || !uploadPreset) {
-        Alert.alert(
-          'Cloudinary Not Configured',
-          'Please configure Cloudinary settings first.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Go to Settings', onPress: () => navigation.navigate('Settings') },
-          ]
-        );
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('file', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: 'contact-photo.jpg',
-      });
-      formData.append('upload_preset', uploadPreset);
-      formData.append('folder', 'context-crm');
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.secure_url) {
-        setPhotoUrl(data.secure_url);
-        console.log('Image uploaded successfully:', data.secure_url);
-        Alert.alert('Success', 'Photo uploaded!');
-      }
-    } catch (error) {
-      console.error('Cloudinary upload error:', error);
-      Alert.alert('Error', 'Failed to upload photo.');
+      // Store local photo URI - will be uploaded to backend when saving contact
+      const localUri = result.assets[0].uri;
+      setPhotoUrl(localUri);
+      console.log('📸 Photo selected locally:', localUri);
     }
   };
 
@@ -666,9 +622,26 @@ const ContactCaptureScreen = () => {
           console.log('ℹ️ No recording to upload');
         }
 
-        // Add photo URL if exists
-        if (photoUrlParam) {
-          contactFormData.append('photoUrl', photoUrlParam);
+        // Add photo - upload if it's a local file, or send URL if already on server
+        if (photoUrlParam && typeof photoUrlParam === 'string' && photoUrlParam.length > 0) {
+          const isLocalFile = photoUrlParam.startsWith('file://');
+          const isServerPath = photoUrlParam.startsWith('/uploads/') ||
+                              photoUrlParam.startsWith('http://') ||
+                              photoUrlParam.startsWith('https://');
+
+          if (isLocalFile) {
+            console.log('📸 Adding NEW photo to upload:', photoUrlParam);
+            contactFormData.append('photo', {
+              uri: photoUrlParam,
+              type: 'image/jpeg',
+              name: 'contact-photo.jpg',
+            });
+          } else if (isServerPath) {
+            console.log('ℹ️ Photo already on server, sending URL:', photoUrlParam);
+            contactFormData.append('photoUrl', photoUrlParam);
+          } else {
+            console.warn('⚠️ Unknown photo URI format:', photoUrlParam);
+          }
         }
 
         console.log(`${modeParam === 'edit' ? 'Updating' : 'Creating'} contact in cloud (${API.ENV_NAME})...`);
