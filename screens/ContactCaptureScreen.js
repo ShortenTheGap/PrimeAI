@@ -1259,7 +1259,7 @@ const ContactCaptureScreen = () => {
       {/* Save Button */}
       <TouchableOpacity
         style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-        onPress={saveContact}
+        onPress={() => saveContact()}
         disabled={isSaving}
       >
         <Text style={styles.saveButtonText}>
