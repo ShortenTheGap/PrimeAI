@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Calendar from 'expo-calendar';
 import apiClient from '../services/ApiService';
 import API from '../config/api';
 
@@ -262,6 +263,25 @@ const ContactListScreen = () => {
 
     const sendFollowUpReminder = async (contact) => {
       try {
+        // Check calendar delivery method preference
+        const deliveryMethod = await AsyncStorage.getItem('@calendar:delivery_method') || 'native';
+        console.log('📅 Follow-up button - calendar delivery method:', deliveryMethod);
+
+        if (deliveryMethod === 'n8n') {
+          // Use N8N webhook
+          await sendFollowUpWebhook(contact);
+        } else {
+          // Use native calendar
+          await createNativeFollowUpEvent(contact);
+        }
+      } catch (error) {
+        console.error('❌ Error creating follow-up:', error);
+        Alert.alert('❌ Error', `Failed to create follow-up: ${error.message}`);
+      }
+    };
+
+    const sendFollowUpWebhook = async (contact) => {
+      try {
         const masterFlowUrl = await AsyncStorage.getItem('@webhook:master_flow');
 
         if (!masterFlowUrl) {
@@ -286,7 +306,7 @@ const ContactListScreen = () => {
           timestamp: new Date().toISOString(),
         };
 
-        console.log('Sending follow-up webhook');
+        console.log('📤 Sending follow-up webhook to N8N');
 
         const response = await fetch(masterFlowUrl, {
           method: 'POST',
@@ -297,13 +317,71 @@ const ContactListScreen = () => {
         });
 
         if (response.ok) {
-          Alert.alert('✅ Success!', 'Follow-up reminder sent successfully!');
+          Alert.alert('✅ Success!', 'Follow-up reminder sent to N8N workflow!');
         } else {
           Alert.alert('❌ Error', `Webhook failed with status: ${response.status}`);
         }
       } catch (error) {
         console.error('Webhook error:', error);
         Alert.alert('❌ Error', `Failed to send reminder: ${error.message}`);
+      }
+    };
+
+    const createNativeFollowUpEvent = async (contact) => {
+      try {
+        console.log('📱 Creating native calendar follow-up event');
+
+        // Request calendar permissions
+        const { status } = await Calendar.requestCalendarPermissionsAsync();
+        console.log('📅 Calendar permission status:', status);
+
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Calendar permission is required to create events.');
+          return;
+        }
+
+        // Get default calendar
+        const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+        const defaultCalendar = calendars.find(cal => cal.isPrimary) || calendars[0];
+
+        if (!defaultCalendar) {
+          Alert.alert('Error', 'No calendar found on this device.');
+          return;
+        }
+
+        console.log('📅 Using calendar:', defaultCalendar.title);
+
+        // Create event details
+        const eventTitle = `Follow up: ${contact.name || 'Contact'}`;
+        const eventNotes = `Contact: ${contact.name || 'N/A'}\nPhone: ${contact.phone || 'N/A'}\nEmail: ${contact.email || 'N/A'}`;
+
+        // Set event for tomorrow at 10 AM
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() + 1);
+        startDate.setHours(10, 0, 0, 0);
+
+        const endDate = new Date(startDate);
+        endDate.setHours(11, 0, 0, 0);
+
+        console.log('📅 Creating event:', eventTitle);
+
+        // Create event
+        const eventId = await Calendar.createEventAsync(defaultCalendar.id, {
+          title: eventTitle,
+          startDate,
+          endDate,
+          notes: eventNotes,
+          timeZone: 'America/New_York',
+        });
+
+        console.log('✅ Native calendar event created! ID:', eventId);
+        Alert.alert(
+          '✅ Success!',
+          `Follow-up event created in your device calendar for tomorrow at 10 AM\n\n"${eventTitle}"`
+        );
+      } catch (error) {
+        console.error('❌ Error creating native calendar event:', error);
+        Alert.alert('❌ Error', `Failed to create calendar event: ${error.message}`);
       }
     };
 
