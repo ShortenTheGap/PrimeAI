@@ -75,8 +75,9 @@ const SettingsScreen = () => {
         // Check if it's an old template that needs migration
         const oldTemplate1 = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's the link to [insert link to your product/service] we discussed. \noh... BTW here's the picture I took from us 😎 {photo}";
         const oldTemplate2 = "Hi {name}! Here's my contact info: [Add your link] {photo}";
+        const oldTemplate3 = "Hi {name}! Great meeting you. Looking forward to staying in touch! {photo}";
 
-        if (savedLink === oldTemplate1 || savedLink === oldTemplate2) {
+        if (savedLink === oldTemplate1 || savedLink === oldTemplate2 || savedLink === oldTemplate3 || savedLink.includes("Here's my contact info") || savedLink.includes("product/service")) {
           // Migrate to new template
           console.log('🔄 Migrating Link/Invitation message to new template');
           setLinkMessage(defaultLink);
@@ -434,7 +435,7 @@ const SettingsScreen = () => {
                 setLinkMessage(text);
                 saveMessageTemplate('link', text);
               }}
-              placeholder="Hi {name}! Here's my contact info..."
+              placeholder="Hi {name}! It was so great to meet you..."
               placeholderTextColor="#64748b"
               multiline
               numberOfLines={5}
