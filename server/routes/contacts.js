@@ -224,6 +224,15 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
   try {
     const { name, phone, email, photoUrl } = req.body;
 
+    // Debug: Log what files were received
+    console.log('📥 POST /api/contacts - Files received:', {
+      hasAudioFile: !!(req.files && req.files.audio),
+      hasPhotoFile: !!(req.files && req.files.photo),
+      audioCount: req.files && req.files.audio ? req.files.audio.length : 0,
+      photoCount: req.files && req.files.photo ? req.files.photo.length : 0,
+      allFiles: req.files ? Object.keys(req.files) : [],
+    });
+
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
@@ -299,6 +308,7 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
     res.status(201).json({
       ...newContact,
       transcript, // Include transcript in response
+      photo_url: newContact.photo_url || photo_url, // Explicitly include photo_url
       webhook_status,
       has_recording
     });
