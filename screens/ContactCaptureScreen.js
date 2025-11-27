@@ -240,6 +240,12 @@ const ContactCaptureScreen = () => {
   useEffect(() => {
     global.hasUnsavedContactChanges = hasUnsavedChanges && !savedSuccessfully && !isSaving;
     console.log('🌐 Updated global unsaved changes flag:', global.hasUnsavedContactChanges);
+
+    // Clear the alert function if there are no unsaved changes
+    if (!global.hasUnsavedContactChanges) {
+      console.log('🧹 No unsaved changes - clearing alert function');
+      global.showUnsavedChangesAlert = null;
+    }
   }, [hasUnsavedChanges, savedSuccessfully, isSaving]);
 
   // Provide global function to show unsaved changes alert
@@ -309,6 +315,7 @@ const ContactCaptureScreen = () => {
               setHasUnsavedChanges(false);
               setSavedSuccessfully(true);
               global.hasUnsavedContactChanges = false;
+              global.showUnsavedChangesAlert = null;
               if (onConfirm) onConfirm();
             },
           },
@@ -728,6 +735,7 @@ const ContactCaptureScreen = () => {
         setSavedSuccessfully(true);
         setHasUnsavedChanges(false);
         global.hasUnsavedContactChanges = false;
+        global.showUnsavedChangesAlert = null;
 
         // Set transcript immediately if it was returned (instant transcription!)
         if (savedContact.transcript) {
