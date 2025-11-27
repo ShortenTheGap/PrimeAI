@@ -57,17 +57,34 @@ const SettingsScreen = () => {
 
       console.log('📥 Loading settings from AsyncStorage');
       if (savedUrl) setMasterFlowUrl(savedUrl);
-      if (savedWelcome) setWelcomeMessage(savedWelcome);
-      if (savedLink) setLinkMessage(savedLink);
       if (savedDeliveryMethod) setSmsDeliveryMethod(savedDeliveryMethod);
 
-      // Set defaults if not configured
-      if (!savedWelcome) {
-        const defaultWelcome = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
+      // Define new default templates
+      const defaultWelcome = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
+      const defaultLink = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
+
+      // Welcome message: Use saved or default
+      if (savedWelcome) {
+        setWelcomeMessage(savedWelcome);
+      } else {
         setWelcomeMessage(defaultWelcome);
       }
-      if (!savedLink) {
-        const defaultLink = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
+
+      // Link message: Migrate old template or use saved/default
+      if (savedLink) {
+        // Check if it's an old template that needs migration
+        const oldTemplate1 = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's the link to [insert link to your product/service] we discussed. \noh... BTW here's the picture I took from us 😎 {photo}";
+        const oldTemplate2 = "Hi {name}! Here's my contact info: [Add your link] {photo}";
+
+        if (savedLink === oldTemplate1 || savedLink === oldTemplate2) {
+          // Migrate to new template
+          console.log('🔄 Migrating Link/Invitation message to new template');
+          setLinkMessage(defaultLink);
+          await AsyncStorage.setItem('@sms:link_message', defaultLink);
+        } else {
+          setLinkMessage(savedLink);
+        }
+      } else {
         setLinkMessage(defaultLink);
       }
     } catch (error) {
