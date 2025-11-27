@@ -118,11 +118,17 @@ const SettingsScreen = () => {
 
   const saveCalendarDeliveryMethod = async (method) => {
     try {
+      console.log(`📅 SAVING calendar delivery method to AsyncStorage: ${method}`);
       await AsyncStorage.setItem('@calendar:delivery_method', method);
+
+      // Verify it was saved
+      const saved = await AsyncStorage.getItem('@calendar:delivery_method');
+      console.log(`📅 VERIFIED saved value: ${saved}`);
+
       setCalendarDeliveryMethod(method);
-      console.log(`✅ Calendar delivery method set to: ${method}`);
+      console.log(`✅ Calendar delivery method state updated to: ${method}`);
     } catch (error) {
-      console.error('Error saving calendar delivery method:', error);
+      console.error('❌ Error saving calendar delivery method:', error);
     }
   };
 

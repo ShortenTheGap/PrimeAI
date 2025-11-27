@@ -1243,15 +1243,23 @@ const ContactCaptureScreen = () => {
   // Route calendar event creation based on user's delivery method preference
   const handleCreateCalendarEvent = async () => {
     try {
+      // Debug: Show ALL delivery method values
+      const smsMethod = await AsyncStorage.getItem('@sms:delivery_method');
+      const calendarMethod = await AsyncStorage.getItem('@calendar:delivery_method');
+
+      console.log('🔍 DEBUG - ALL delivery methods in AsyncStorage:');
+      console.log('  SMS method:', smsMethod);
+      console.log('  Calendar method:', calendarMethod);
+
       // Check delivery method preference
-      const deliveryMethod = await AsyncStorage.getItem('@calendar:delivery_method') || 'native';
-      console.log('📅 Calendar delivery method from storage:', deliveryMethod);
+      const deliveryMethod = calendarMethod || 'native';
+      console.log('📅 Calendar delivery method (with fallback):', deliveryMethod);
 
       if (deliveryMethod === 'n8n') {
-        console.log('🔗 Using N8N webhook for calendar event');
+        console.log('🔗 ROUTE CHOSEN: Using N8N webhook for calendar event');
         await sendCalendarWebhook();
       } else {
-        console.log('📱 Using NATIVE calendar for event (no N8N involved)');
+        console.log('📱 ROUTE CHOSEN: Using NATIVE calendar for event (no N8N involved)');
         await createNativeCalendarEvent();
       }
     } catch (error) {
