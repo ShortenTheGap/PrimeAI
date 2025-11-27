@@ -751,9 +751,37 @@ const ContactCaptureScreen = () => {
           setTranscript(savedContact.transcript);
         }
 
-        // Invalidate contacts cache to force refresh on list screen
-        await AsyncStorage.multiRemove([CACHE_KEY, CACHE_TIMESTAMP_KEY]);
-        console.log('🗑️ Contacts cache invalidated - list will refresh from server');
+        // Update cache with the saved contact instead of invalidating it
+        // This prevents forcing a full sync next time ContactList loads
+        try {
+          const cachedContactsJson = await AsyncStorage.getItem(CACHE_KEY);
+          if (cachedContactsJson) {
+            const cachedContacts = JSON.parse(cachedContactsJson);
+
+            if (mode === 'edit' && contactId) {
+              // Update existing contact in cache
+              const index = cachedContacts.findIndex(c => c.contact_id === contactId);
+              if (index !== -1) {
+                cachedContacts[index] = savedContact;
+                console.log('💾 Updated contact in cache');
+              }
+            } else {
+              // Add new contact to cache
+              cachedContacts.unshift(savedContact); // Add to beginning
+              console.log('💾 Added new contact to cache');
+            }
+
+            // Save updated cache
+            await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cachedContacts));
+            await AsyncStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString());
+            console.log('✅ Cache updated - list will load instantly without server sync');
+          } else {
+            console.log('ℹ️ No cache to update - list will sync from server on next load');
+          }
+        } catch (cacheError) {
+          console.error('⚠️ Error updating cache:', cacheError);
+          // Non-critical error, continue
+        }
 
         // Only show success alert if not skipped
         if (!skipSuccessAlert) {
@@ -975,6 +1003,8 @@ const ContactCaptureScreen = () => {
         // Mark as saved successfully to prevent unsaved changes warning
         setSavedSuccessfully(true);
         setHasUnsavedChanges(false);
+        global.hasUnsavedContactChanges = false;
+        global.showUnsavedChangesAlert = null;
 
         // Set transcript immediately if it was returned (instant transcription!)
         if (savedContact.transcript) {
@@ -982,9 +1012,37 @@ const ContactCaptureScreen = () => {
           setTranscript(savedContact.transcript);
         }
 
-        // Invalidate contacts cache to force refresh on list screen
-        await AsyncStorage.multiRemove([CACHE_KEY, CACHE_TIMESTAMP_KEY]);
-        console.log('🗑️ Contacts cache invalidated - list will refresh from server');
+        // Update cache with the saved contact instead of invalidating it
+        // This prevents forcing a full sync next time ContactList loads
+        try {
+          const cachedContactsJson = await AsyncStorage.getItem(CACHE_KEY);
+          if (cachedContactsJson) {
+            const cachedContacts = JSON.parse(cachedContactsJson);
+
+            if (mode === 'edit' && contactId) {
+              // Update existing contact in cache
+              const index = cachedContacts.findIndex(c => c.contact_id === contactId);
+              if (index !== -1) {
+                cachedContacts[index] = savedContact;
+                console.log('💾 Updated contact in cache');
+              }
+            } else {
+              // Add new contact to cache
+              cachedContacts.unshift(savedContact); // Add to beginning
+              console.log('💾 Added new contact to cache');
+            }
+
+            // Save updated cache
+            await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cachedContacts));
+            await AsyncStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString());
+            console.log('✅ Cache updated - list will load instantly without server sync');
+          } else {
+            console.log('ℹ️ No cache to update - list will sync from server on next load');
+          }
+        } catch (cacheError) {
+          console.error('⚠️ Error updating cache:', cacheError);
+          // Non-critical error, continue
+        }
 
         // Only show success alert if not skipped (when called from warning dialog, we skip it)
         if (!skipSuccessAlert) {
