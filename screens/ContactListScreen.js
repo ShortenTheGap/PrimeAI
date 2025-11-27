@@ -123,7 +123,7 @@ const ContactListScreen = () => {
 
       // Use incremental sync if we have cached data (unless fullSync is forced)
       if (!fullSync && contacts.length > 0) {
-        const cachedData = await readFromCache();
+        const cachedData = await loadFromCache();
         if (cachedData && cachedData.timestamp) {
           // Only fetch contacts modified since last sync
           url = `/api/contacts?since=${cachedData.timestamp}`;
@@ -246,11 +246,18 @@ const ContactListScreen = () => {
               console.log(`Deleting contact ${contactId} from cloud...`);
               await apiClient.delete(`/api/contacts/${contactId}`);
 
-              // Invalidate cache and reload from server
-              await clearCache();
-              await syncFromServer(true);
+              // Immediately update local state to remove the contact
+              const updatedContacts = contacts.filter(c =>
+                (c.contact_id || c.id) !== contactId
+              );
+              setContacts(updatedContacts);
+              setFilteredContacts(updatedContacts);
 
-              Alert.alert('✅ Success', 'Contact deleted from cloud');
+              // Update cache with new list
+              await saveToCache(updatedContacts);
+
+              console.log(`✅ Contact removed from UI and cache`);
+              Alert.alert('✅ Success', 'Contact deleted');
             } catch (error) {
               console.error('Error deleting contact:', error);
               Alert.alert('❌ Error', 'Failed to delete contact');
