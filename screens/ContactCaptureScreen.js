@@ -842,9 +842,26 @@ const ContactCaptureScreen = () => {
           console.log('ℹ️ No recording to upload');
         }
 
-        // Add photo URL if exists
-        if (photoUrl) {
-          contactFormData.append('photoUrl', photoUrl);
+        // Add photo - upload if it's a local file, or send URL if already on server
+        if (photoUrl && typeof photoUrl === 'string' && photoUrl.length > 0) {
+          const isLocalFile = photoUrl.startsWith('file://');
+          const isServerPath = photoUrl.startsWith('/uploads/') ||
+                              photoUrl.startsWith('http://') ||
+                              photoUrl.startsWith('https://');
+
+          if (isLocalFile) {
+            console.log('📸 Adding NEW photo to upload:', photoUrl);
+            contactFormData.append('photo', {
+              uri: photoUrl,
+              type: 'image/jpeg',
+              name: 'contact-photo.jpg',
+            });
+          } else if (isServerPath) {
+            console.log('ℹ️ Photo already on server, sending URL:', photoUrl);
+            contactFormData.append('photoUrl', photoUrl);
+          } else {
+            console.warn('⚠️ Unknown photo URI format:', photoUrl);
+          }
         }
 
         console.log(`${mode === 'edit' ? 'Updating' : 'Creating'} contact in cloud (${API.ENV_NAME})...`);
