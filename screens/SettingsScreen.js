@@ -61,7 +61,7 @@ const SettingsScreen = () => {
 
       // Define new default templates
       const defaultWelcome = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
-      const defaultLink = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
+      const defaultLink = "Hi {name}! It was so great to meet you. Looking forward to staying in touch! Here's the link to [insert link to your product/service] we discussed. oh... BTW here's the picture I took from us 😎 \n{photo}";
 
       // Welcome message: Use saved or default
       if (savedWelcome) {
@@ -73,11 +73,11 @@ const SettingsScreen = () => {
       // Link message: Migrate old template or use saved/default
       if (savedLink) {
         // Check if it's an old template that needs migration
-        const oldTemplate1 = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's the link to [insert link to your product/service] we discussed. \noh... BTW here's the picture I took from us 😎 {photo}";
-        const oldTemplate2 = "Hi {name}! Here's my contact info: [Add your link] {photo}";
-        const oldTemplate3 = "Hi {name}! Great meeting you. Looking forward to staying in touch! {photo}";
+        const oldTemplate1 = "Hi {name}! Here's my contact info: [Add your link] {photo}";
+        const oldTemplate2 = "Hi {name}! Great meeting you. Looking forward to staying in touch! {photo}";
+        const oldTemplate3 = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
 
-        if (savedLink === oldTemplate1 || savedLink === oldTemplate2 || savedLink === oldTemplate3 || savedLink.includes("Here's my contact info") || savedLink.includes("product/service")) {
+        if (savedLink === oldTemplate1 || savedLink === oldTemplate2 || savedLink === oldTemplate3 || savedLink.includes("Here's my contact info") || savedLink.includes("my booking link")) {
           // Migrate to new template
           console.log('🔄 Migrating Link/Invitation message to new template');
           setLinkMessage(defaultLink);

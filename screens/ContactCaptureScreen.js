@@ -1097,7 +1097,7 @@ const ContactCaptureScreen = () => {
         if (action === 'welcome') {
           messageTemplate = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
         } else if (action === 'link') {
-          messageTemplate = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
+          messageTemplate = "Hi {name}! It was so great to meet you. Looking forward to staying in touch! Here's the link to [insert link to your product/service] we discussed. oh... BTW here's the picture I took from us 😎 \n{photo}";
         }
       }
 
