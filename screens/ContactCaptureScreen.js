@@ -82,7 +82,15 @@ const ContactCaptureScreen = () => {
         });
         setRecordingUri(transformedContact.recordingUri || null);
         setHasRecording(transformedContact.hasRecording || false);
-        setPhotoUrl(transformedContact.photoUrl || null);
+
+        // Convert relative photo URLs to absolute URLs for React Native Image component
+        let displayPhotoUrl = transformedContact.photoUrl || null;
+        if (displayPhotoUrl && displayPhotoUrl.startsWith('/uploads/')) {
+          displayPhotoUrl = `${API.API_URL}${displayPhotoUrl}`;
+          console.log('📸 Converted relative photo URL to absolute:', displayPhotoUrl);
+        }
+        setPhotoUrl(displayPhotoUrl);
+
         setTranscript(transformedContact.transcript || null);
 
         console.log('✅ Edit mode - state set:', {
