@@ -131,11 +131,6 @@ const SettingsScreen = () => {
     setMonitoringEnabled(value);
   };
 
-  const testNotification = () => {
-    ContactMonitorService.testNotification();
-    Alert.alert('Test Notification', 'A test notification has been sent!');
-  };
-
   const testMasterWebhook = async () => {
     if (!masterFlowUrl) {
       Alert.alert('Error', 'Please enter the N8N Master Flow URL first');
@@ -370,58 +365,6 @@ const SettingsScreen = () => {
             </Text>
           </View>
         )}
-      </View>
-
-      {/* Photo Storage - Now handled automatically by backend */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>📸 Photo Storage</Text>
-        </View>
-
-        <View style={styles.webhookCard}>
-          <Text style={styles.webhookDescription}>
-            Photos are automatically uploaded and stored on your backend server. No additional configuration needed!
-          </Text>
-          <Text style={styles.webhookHint}>
-            ✅ Photos are stored securely and can be included in SMS messages to your contacts.
-          </Text>
-        </View>
-      </View>
-
-      {/* How It Works */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>💡 How It Works</Text>
-        </View>
-
-        <View style={styles.infoCard}>
-          <Text style={styles.stepText}>
-            <Text style={styles.stepNumber}>1.</Text> Add a contact to your phone after meeting someone
-          </Text>
-          <Text style={styles.stepText}>
-            <Text style={styles.stepNumber}>2.</Text> Within 60 seconds, you'll get a notification
-          </Text>
-          <Text style={styles.stepText}>
-            <Text style={styles.stepNumber}>3.</Text> Tap to record voice context about your meeting
-          </Text>
-          <Text style={styles.stepText}>
-            <Text style={styles.stepNumber}>4.</Text> AI automatically analyzes and organizes the context
-          </Text>
-        </View>
-      </View>
-
-      {/* Testing Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>🧪 Testing</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.testButton}
-          onPress={testNotification}
-        >
-          <Text style={styles.testButtonText}>Send Test Notification</Text>
-        </TouchableOpacity>
       </View>
 
       {/* About */}
