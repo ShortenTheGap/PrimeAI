@@ -219,33 +219,6 @@ const SettingsScreen = () => {
         <Text style={styles.title}>Settings</Text>
       </View>
 
-      {/* API Environment Debug Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>🔧 API Configuration</Text>
-        </View>
-        <View style={styles.debugCard}>
-          <Text style={styles.debugLabel}>Environment:</Text>
-          <Text style={styles.debugValue}>{API.ENV_NAME}</Text>
-
-          <Text style={styles.debugLabel}>API URL:</Text>
-          <Text style={styles.debugValue}>{API.API_URL}</Text>
-
-          <Text style={styles.debugLabel}>Build Type:</Text>
-          <Text style={styles.debugValue}>
-            {Constants.appOwnership === 'standalone' ? 'Standalone (TestFlight/App Store)' :
-             Constants.appOwnership === 'expo' ? 'Expo Go (Development)' :
-             Constants.appOwnership || 'Unknown'}
-          </Text>
-
-          <Text style={styles.debugLabel}>Constants.appOwnership:</Text>
-          <Text style={styles.debugValue}>{Constants.appOwnership || 'null/undefined'}</Text>
-
-          <Text style={styles.debugLabel}>__DEV__ flag:</Text>
-          <Text style={styles.debugValue}>{__DEV__ ? 'true' : 'false'}</Text>
-        </View>
-      </View>
-
       {/* Account Section */}
       {userInfo && userInfo.email && (
         <View style={styles.section}>
