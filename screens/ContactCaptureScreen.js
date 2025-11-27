@@ -696,8 +696,20 @@ const ContactCaptureScreen = () => {
           name: savedContact.name,
           has_recording: savedContact.has_recording,
           recording_uri: savedContact.recording_uri,
+          photo_url: savedContact.photo_url,
           webhook_status: savedContact.webhook_status,
         });
+
+        // Update photoUrl with server URL for N8N webhooks
+        if (savedContact.photo_url) {
+          let serverPhotoUrl = savedContact.photo_url;
+          // Convert relative URL to absolute
+          if (serverPhotoUrl.startsWith('/uploads/')) {
+            serverPhotoUrl = `${API.API_URL}${serverPhotoUrl}`;
+          }
+          setPhotoUrl(serverPhotoUrl);
+          console.log('📸 Updated photoUrl with server URL:', serverPhotoUrl);
+        }
 
         // Mark as saved successfully to prevent unsaved changes warning
         setSavedSuccessfully(true);
@@ -916,8 +928,20 @@ const ContactCaptureScreen = () => {
           name: savedContact.name,
           has_recording: savedContact.has_recording,
           recording_uri: savedContact.recording_uri,
+          photo_url: savedContact.photo_url,
           webhook_status: savedContact.webhook_status,
         });
+
+        // Update photoUrl with server URL for N8N webhooks
+        if (savedContact.photo_url) {
+          let serverPhotoUrl = savedContact.photo_url;
+          // Convert relative URL to absolute
+          if (serverPhotoUrl.startsWith('/uploads/')) {
+            serverPhotoUrl = `${API.API_URL}${serverPhotoUrl}`;
+          }
+          setPhotoUrl(serverPhotoUrl);
+          console.log('📸 Updated photoUrl with server URL:', serverPhotoUrl);
+        }
 
         // Mark as saved successfully to prevent unsaved changes warning
         setSavedSuccessfully(true);
