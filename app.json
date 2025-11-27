@@ -18,6 +18,7 @@
         "NSContactsUsageDescription": "We need access to your contacts to notify you when you add someone new.",
         "NSMicrophoneUsageDescription": "We need microphone access to record voice notes.",
         "NSLocationWhenInUseUsageDescription": "We use your location to remember where you met contacts.",
+        "NSCalendarsUsageDescription": "We need access to your calendar to create follow-up events for new contacts.",
         "UIBackgroundModes": [
           "audio",
           "fetch",
@@ -34,7 +35,9 @@
         "POST_NOTIFICATIONS",
         "RECORD_AUDIO",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR"
       ]
     },
     "scheme": "contextcrm",
