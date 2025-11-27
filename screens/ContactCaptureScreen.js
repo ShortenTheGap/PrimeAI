@@ -1699,10 +1699,10 @@ const ContactCaptureScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonSecondary]}
+          style={[styles.actionButton, styles.actionButtonCalendar]}
           onPress={handleCreateCalendarEvent}
         >
-          <Text style={styles.actionButtonText}>📅 Create Calendar Event</Text>
+          <Text style={styles.actionButtonText}>📅 Create Calendar Reminder</Text>
         </TouchableOpacity>
       </View>
 
@@ -1941,6 +1941,9 @@ const styles = StyleSheet.create({
   },
   actionButtonSecondary: {
     backgroundColor: '#8b5cf6',
+  },
+  actionButtonCalendar: {
+    backgroundColor: '#f59e0b',
   },
   actionButtonText: {
     color: 'white',
