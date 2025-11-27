@@ -252,7 +252,8 @@ const ContactCaptureScreen = () => {
   useEffect(() => {
     // Only create the alert function if there are unsaved changes
     if (!hasUnsavedChanges || savedSuccessfully || isSaving) {
-      console.log('🔧 No unsaved changes - skipping alert function setup');
+      console.log('🔧 No unsaved changes - clearing alert function');
+      global.showUnsavedChangesAlert = null;
       return;
     }
 
