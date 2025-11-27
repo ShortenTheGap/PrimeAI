@@ -60,11 +60,11 @@ const SettingsScreen = () => {
 
       // Set defaults if not configured
       if (!savedWelcome) {
-        const defaultWelcome = "Hi {name}! Great meeting you. Looking forward to staying in touch!";
+        const defaultWelcome = "Hi {name}! Great meeting you. Looking forward to staying in touch! {photo}";
         setWelcomeMessage(defaultWelcome);
       }
       if (!savedLink) {
-        const defaultLink = "Hi {name}! Here's my contact info: [Add your link]";
+        const defaultLink = "Hi {name}! Here's my contact info: [Add your link] {photo}";
         setLinkMessage(defaultLink);
       }
     } catch (error) {
@@ -320,7 +320,7 @@ const SettingsScreen = () => {
 
         <View style={styles.webhookCard}>
           <Text style={styles.settingDescription} style={{marginBottom: 16, color: '#94a3b8'}}>
-            Customize your SMS messages. Use {'{name}'} to insert the contact's name.
+            Customize your SMS messages. Use {'{name}'} for contact name and {'{photo}'} for photo link.
           </Text>
 
           {/* Welcome Message Template */}

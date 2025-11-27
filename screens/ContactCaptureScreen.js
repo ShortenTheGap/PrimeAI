@@ -1051,14 +1051,27 @@ const ContactCaptureScreen = () => {
       // Use default if template not set
       if (!messageTemplate) {
         if (action === 'welcome') {
-          messageTemplate = "Hi {name}! Great meeting you. Looking forward to staying in touch!";
+          messageTemplate = "Hi {name}! Great meeting you. Looking forward to staying in touch! {photo}";
         } else if (action === 'link') {
-          messageTemplate = "Hi {name}! Here's my contact info: [Add your link]";
+          messageTemplate = "Hi {name}! Here's my contact info: [Add your link] {photo}";
         }
       }
 
       // Replace {name} with actual contact name
-      const messageBody = messageTemplate.replace(/{name}/g, formData.name || 'there');
+      let messageBody = messageTemplate.replace(/{name}/g, formData.name || 'there');
+
+      // Replace {photo} with photo URL if available
+      // Only include photo if it's already uploaded to server (http/https URL, not local file://)
+      if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+        messageBody = messageBody.replace(/{photo}/g, photoUrl);
+        console.log('📸 Including photo URL in message:', photoUrl);
+      } else {
+        // Remove {photo} placeholder if no server photo available
+        messageBody = messageBody.replace(/{photo}/g, '');
+        if (messageTemplate.includes('{photo}')) {
+          console.log('ℹ️ No server photo URL available - placeholder removed from message');
+        }
+      }
 
       console.log('📤 Opening SMS app with pre-filled message:', { action, phone: formData.phone });
 
