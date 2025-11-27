@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import * as Calendar from 'expo-calendar';
 import apiClient from '../services/ApiService';
 import API from '../config/api';
 
@@ -1239,6 +1240,139 @@ const ContactCaptureScreen = () => {
     }
   };
 
+  // Route calendar event creation based on user's delivery method preference
+  const handleCreateCalendarEvent = async () => {
+    try {
+      // Check delivery method preference
+      const deliveryMethod = await AsyncStorage.getItem('@calendar:delivery_method') || 'native';
+      console.log('📅 Calendar delivery method:', deliveryMethod);
+
+      if (deliveryMethod === 'n8n') {
+        // Use N8N webhook
+        await sendCalendarWebhook();
+      } else {
+        // Use native calendar
+        await createNativeCalendarEvent();
+      }
+    } catch (error) {
+      console.error('Error handling calendar event:', error);
+      Alert.alert('❌ Error', `Failed to create calendar event: ${error.message}`);
+    }
+  };
+
+  const createNativeCalendarEvent = async () => {
+    try {
+      // Request calendar permissions
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Calendar permission is required to create events.');
+        return;
+      }
+
+      // Get default calendar
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const defaultCalendar = calendars.find(cal => cal.isPrimary) || calendars[0];
+
+      if (!defaultCalendar) {
+        Alert.alert('Error', 'No calendar found on this device.');
+        return;
+      }
+
+      // Create event details
+      const eventTitle = `Follow up: ${formData.name || 'New Contact'}`;
+      const eventNotes = `Contact: ${formData.name || 'N/A'}\nPhone: ${formData.phone || 'N/A'}\nEmail: ${formData.email || 'N/A'}`;
+
+      // Set event for tomorrow at 10 AM
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() + 1);
+      startDate.setHours(10, 0, 0, 0);
+
+      const endDate = new Date(startDate);
+      endDate.setHours(11, 0, 0, 0);
+
+      // Create event
+      const eventId = await Calendar.createEventAsync(defaultCalendar.id, {
+        title: eventTitle,
+        startDate,
+        endDate,
+        notes: eventNotes,
+        timeZone: 'America/New_York', // You might want to make this configurable
+      });
+
+      console.log('✅ Calendar event created:', eventId);
+      Alert.alert(
+        '✅ Success!',
+        `Calendar event created for tomorrow at 10 AM\n\n"${eventTitle}"`
+      );
+    } catch (error) {
+      console.error('Error creating native calendar event:', error);
+      Alert.alert('❌ Error', `Failed to create calendar event: ${error.message}`);
+    }
+  };
+
+  const sendCalendarWebhook = async () => {
+    try {
+      const masterFlowUrl = await AsyncStorage.getItem('@webhook:master_flow');
+
+      if (!masterFlowUrl) {
+        Alert.alert('Webhook Not Configured', 'Please configure the N8N Master Flow URL in Settings first.');
+        return;
+      }
+
+      // Set event for tomorrow at 10 AM
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() + 1);
+      startDate.setHours(10, 0, 0, 0);
+
+      const endDate = new Date(startDate);
+      endDate.setHours(11, 0, 0, 0);
+
+      const payload = {
+        action: 'create_calendar_event',
+        contact: {
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email,
+        },
+        event: {
+          title: `Follow up: ${formData.name || 'New Contact'}`,
+          description: `Follow up with ${formData.name || 'new contact'}`,
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+        },
+        photoUrl: photoUrl,
+        hasPhoto: !!photoUrl,
+        timestamp: new Date().toISOString(),
+      };
+
+      console.log('📅 Sending calendar event webhook:', {
+        action: 'create_calendar_event',
+        contactName: formData.name,
+        startTime: startDate.toISOString(),
+      });
+
+      const response = await fetch(masterFlowUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        Alert.alert(
+          '✅ Success!',
+          `Calendar event sent to N8N!\n\nEvent: Follow up with ${formData.name || 'contact'}\nTime: Tomorrow at 10 AM`
+        );
+      } else {
+        Alert.alert('❌ Error', `Webhook failed with status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Calendar webhook error:', error);
+      Alert.alert('❌ Error', `Failed to send calendar webhook: ${error.message}`);
+    }
+  };
+
 
   // Cleanup: Clear global flags when screen loses focus or unmounts
   useEffect(() => {
@@ -1404,6 +1538,13 @@ const ContactCaptureScreen = () => {
           onPress={() => handleSendMessage('link')}
         >
           <Text style={styles.actionButtonText}>🔗 Send Invitation Link</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, styles.actionButtonSecondary]}
+          onPress={handleCreateCalendarEvent}
+        >
+          <Text style={styles.actionButtonText}>📅 Create Calendar Event</Text>
         </TouchableOpacity>
       </View>
 

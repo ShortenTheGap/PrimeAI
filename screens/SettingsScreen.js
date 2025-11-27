@@ -25,6 +25,7 @@ const SettingsScreen = () => {
   const [welcomeMessage, setWelcomeMessage] = useState('');
   const [linkMessage, setLinkMessage] = useState('');
   const [smsDeliveryMethod, setSmsDeliveryMethod] = useState('native'); // 'native' or 'n8n'
+  const [calendarDeliveryMethod, setCalendarDeliveryMethod] = useState('native'); // 'native' or 'n8n'
 
   useEffect(() => {
     checkPermissions();
@@ -54,10 +55,12 @@ const SettingsScreen = () => {
       const savedWelcome = await AsyncStorage.getItem('@sms:welcome_message');
       const savedLink = await AsyncStorage.getItem('@sms:link_message');
       const savedDeliveryMethod = await AsyncStorage.getItem('@sms:delivery_method');
+      const savedCalendarMethod = await AsyncStorage.getItem('@calendar:delivery_method');
 
       console.log('📥 Loading settings from AsyncStorage');
       if (savedUrl) setMasterFlowUrl(savedUrl);
       if (savedDeliveryMethod) setSmsDeliveryMethod(savedDeliveryMethod);
+      if (savedCalendarMethod) setCalendarDeliveryMethod(savedCalendarMethod);
 
       // Define new default templates
       const defaultWelcome = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
@@ -110,6 +113,16 @@ const SettingsScreen = () => {
       console.log(`✅ SMS delivery method set to: ${method}`);
     } catch (error) {
       console.error('Error saving SMS delivery method:', error);
+    }
+  };
+
+  const saveCalendarDeliveryMethod = async (method) => {
+    try {
+      await AsyncStorage.setItem('@calendar:delivery_method', method);
+      setCalendarDeliveryMethod(method);
+      console.log(`✅ Calendar delivery method set to: ${method}`);
+    } catch (error) {
+      console.error('Error saving calendar delivery method:', error);
     }
   };
 
@@ -444,6 +457,57 @@ const SettingsScreen = () => {
               Opens your SMS app with this pre-filled message
             </Text>
           </View>
+        </View>
+      </View>
+
+      {/* Calendar Event Delivery Method */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>📅 Calendar Event Delivery Method</Text>
+        </View>
+
+        <View style={styles.webhookCard}>
+          <Text style={styles.settingDescription} style={{marginBottom: 16, color: '#94a3b8'}}>
+            Choose how you want to create calendar events for contacts
+          </Text>
+
+          {/* Native Calendar Option */}
+          <TouchableOpacity
+            style={[
+              styles.radioOption,
+              calendarDeliveryMethod === 'native' && styles.radioOptionSelected
+            ]}
+            onPress={() => saveCalendarDeliveryMethod('native')}
+          >
+            <View style={styles.radioButton}>
+              {calendarDeliveryMethod === 'native' && <View style={styles.radioButtonInner} />}
+            </View>
+            <View style={styles.radioContent}>
+              <Text style={styles.radioLabel}>📱 Native Calendar (Recommended)</Text>
+              <Text style={styles.radioDescription}>
+                Opens your device calendar app with pre-filled event details. Events saved to your personal calendar. Free.
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* N8N Webhook Option */}
+          <TouchableOpacity
+            style={[
+              styles.radioOption,
+              calendarDeliveryMethod === 'n8n' && styles.radioOptionSelected
+            ]}
+            onPress={() => saveCalendarDeliveryMethod('n8n')}
+          >
+            <View style={styles.radioButton}>
+              {calendarDeliveryMethod === 'n8n' && <View style={styles.radioButtonInner} />}
+            </View>
+            <View style={styles.radioContent}>
+              <Text style={styles.radioLabel}>🔗 N8N Webhook (Advanced)</Text>
+              <Text style={styles.radioDescription}>
+                Sends event data to your N8N workflow for Google Calendar integration. Requires N8N Master Flow URL configuration.
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
