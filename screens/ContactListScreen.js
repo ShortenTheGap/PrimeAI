@@ -257,7 +257,6 @@ const ContactListScreen = () => {
               await saveToCache(updatedContacts);
 
               console.log(`✅ Contact removed from UI and cache`);
-              Alert.alert('✅ Success', 'Contact deleted');
             } catch (error) {
               console.error('Error deleting contact:', error);
               Alert.alert('❌ Error', 'Failed to delete contact');

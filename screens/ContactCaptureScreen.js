@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   BackHandler,
   Linking,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,6 +29,7 @@ const CACHE_TIMESTAMP_KEY = '@contacts:timestamp';
 const ContactCaptureScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const scrollViewRef = useRef(null);
 
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState(null);
@@ -36,6 +38,7 @@ const ContactCaptureScreen = () => {
   const [transcript, setTranscript] = useState(null);
   const [photoUrl, setPhotoUrl] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -127,6 +130,14 @@ const ContactCaptureScreen = () => {
         setTranscript(null);
       }
     }, [route.params]);
+
+  // Scroll to top when adding a new contact
+  useEffect(() => {
+    const currentMode = route.params?.mode || 'add';
+    if (currentMode === 'add' && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+    }
+  }, [route.params?.mode]);
 
   // Track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -961,25 +972,9 @@ const ContactCaptureScreen = () => {
 
         // Only show success alert if not skipped (when called from warning dialog, we skip it)
         if (!skipSuccessAlert) {
-          // Build success message with webhook status
-          let successMessage = `Contact ${mode === 'edit' ? 'updated' : 'saved'} to cloud!\n\n☁️ Your data is safely backed up.`;
-
-          if (savedContact.has_recording) {
-            if (savedContact.transcript) {
-              successMessage += '\n\n🎙️ Voice note transcribed instantly!';
-            } else {
-              successMessage += '\n\n🎙️ Voice note saved (transcription unavailable).';
-            }
-
-            // N8N is now optional for power users
-            if (savedContact.webhook_status === 'sent') {
-              successMessage += '\n📤 Data sent to N8N webhook for custom integrations.';
-            }
-          }
-
           Alert.alert(
             '✅ Success!',
-            successMessage,
+            'contact saved!',
             [
               {
                 text: 'OK',
@@ -1066,6 +1061,8 @@ const ContactCaptureScreen = () => {
   // Route message sending based on user's delivery method preference
   const handleSendMessage = async (action) => {
     try {
+      setIsSendingMessage(true);
+
       // Check delivery method preference
       const deliveryMethod = await AsyncStorage.getItem('@sms:delivery_method') || 'native';
       console.log('📤 SMS delivery method:', deliveryMethod);
@@ -1080,6 +1077,8 @@ const ContactCaptureScreen = () => {
     } catch (error) {
       console.error('Error handling message send:', error);
       Alert.alert('❌ Error', `Failed to send message: ${error.message}`);
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -1208,10 +1207,7 @@ const ContactCaptureScreen = () => {
       });
 
       if (response.ok) {
-        Alert.alert(
-          '✅ Success!',
-          `Message sent successfully!\n\nAction: ${action}\nContact: ${formData.name || 'N/A'}`
-        );
+        Alert.alert('✅ Success!', 'message sent successfully!');
       } else {
         Alert.alert('❌ Error', `Webhook failed with status: ${response.status}`);
       }
@@ -1319,10 +1315,7 @@ const ContactCaptureScreen = () => {
       });
 
       console.log('✅ Native calendar event created successfully! ID:', eventId);
-      Alert.alert(
-        '✅ Success!',
-        `Calendar event created in your device calendar for tomorrow at 10 AM\n\n"${eventTitle}"\n\nThis was created NATIVELY - no N8N involved.`
-      );
+      Alert.alert('✅ Success!!', 'Calendar reminder saved!');
     } catch (error) {
       console.error('❌ Error creating native calendar event:', error);
       Alert.alert('❌ Error', `Failed to create calendar event: ${error.message}`);
@@ -1379,10 +1372,7 @@ const ContactCaptureScreen = () => {
       });
 
       if (response.ok) {
-        Alert.alert(
-          '✅ Success!',
-          `Calendar event sent to N8N!\n\nEvent: Follow up with ${formData.name || 'contact'}\nTime: Tomorrow at 10 AM`
-        );
+        Alert.alert('✅ Success!!', 'Calendar reminder saved!');
       } else {
         Alert.alert('❌ Error', `Webhook failed with status: ${response.status}`);
       }
@@ -1431,7 +1421,7 @@ const ContactCaptureScreen = () => {
   const prefilledContact = route.params?.contactData;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView ref={scrollViewRef} style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>
           {mode === 'edit' ? 'Edit Contact' : 'Add Contact Context'}
@@ -1545,16 +1535,25 @@ const ContactCaptureScreen = () => {
       <View style={styles.actionsSection}>
         <Text style={styles.sectionTitle}>Actions</Text>
 
+        {isSendingMessage && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#6366f1" />
+            <Text style={styles.loadingText}>Sending message...</Text>
+          </View>
+        )}
+
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, isSendingMessage && styles.actionButtonDisabled]}
           onPress={() => handleSendMessage('welcome')}
+          disabled={isSendingMessage}
         >
           <Text style={styles.actionButtonText}>📧 Send Welcome Message</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonSecondary]}
+          style={[styles.actionButton, styles.actionButtonSecondary, isSendingMessage && styles.actionButtonDisabled]}
           onPress={() => handleSendMessage('link')}
+          disabled={isSendingMessage}
         >
           <Text style={styles.actionButtonText}>🔗 Send Invitation Link</Text>
         </TouchableOpacity>
@@ -1576,7 +1575,7 @@ const ContactCaptureScreen = () => {
         <Text style={styles.saveButtonText}>
           {isSaving
             ? '☁️ Saving to Cloud...'
-            : `💾 ${mode === 'edit' ? 'Update Contact' : 'Save to Cloud'}`
+            : `💾 ${mode === 'edit' ? 'Update Contact' : 'Save Contact'}`
           }
         </Text>
       </TouchableOpacity>
@@ -1771,12 +1770,34 @@ const styles = StyleSheet.create({
     marginTop: 0,
     borderRadius: 12,
   },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    borderRadius: 12,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#f1f5f9',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   actionButton: {
     backgroundColor: '#6366f1',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 12,
+  },
+  actionButtonDisabled: {
+    backgroundColor: '#64748b',
+    opacity: 0.6,
   },
   actionButtonSecondary: {
     backgroundColor: '#8b5cf6',
