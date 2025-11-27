@@ -1,0 +1,143 @@
+╔════════════════════════════════════════════════════════════════╗
+║          QUICK RESTORE - PrimeAI Build 26                      ║
+╚════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+METHOD 1: FROM TAR BACKUP (FASTEST)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd /home/user
+mv PrimeAI PrimeAI-broken-backup  # Optional: save broken version
+tar -xzf PrimeAI-backup-build26-20251127-100048.tar.gz
+cd PrimeAI
+npm install
+npx expo start
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+METHOD 2: FROM GIT TAG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd /home/user/PrimeAI
+git stash  # or: git reset --hard HEAD
+git checkout v1.0-build26
+git checkout -b restored-build26
+npm install
+npx expo start
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+METHOD 3: FROM BRANCH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd /home/user/PrimeAI
+git checkout claude/restore-app-backup-01838tKxn5CpUTp23WERyQrm
+git pull origin claude/restore-app-backup-01838tKxn5CpUTp23WERyQrm
+npm install
+npx expo start
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DEPLOY BACKEND TO RAILWAY (REQUIRED!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Create PR to merge to main for Railway auto-deploy
+gh pr create --base main --head claude/restore-app-backup-01838tKxn5CpUTp23WERyQrm \
+  --title "Build 26: Instant OpenAI transcription" \
+  --body "See BUILD-26-DEPLOYMENT.md for details"
+
+# Or merge via GitHub UI and Railway will auto-deploy
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RAILWAY ENVIRONMENT VARIABLES (REQUIRED!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST be set in Railway Dashboard for Build 26 to work:
+
+OPENAI_API_KEY=sk-proj-waZXoh...   # Your OpenAI API key (REQUIRED!)
+JWT_SECRET=your-secret-key          # Already configured
+DATABASE_URL=postgresql://...       # Already configured
+
+OPTIONAL (for power users):
+N8N_WEBHOOK_URL=https://...         # Optional custom integrations
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VERIFY BUILD 26
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+grep "buildNumber" app.json
+# Should show: "buildNumber": "26"
+
+git log --oneline -3
+# Should show Build 26 commits
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TEST TRANSCRIPTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Open app in Expo or TestFlight
+2. Create new contact
+3. Record voice note
+4. Save contact
+5. ✅ Transcript should appear INSTANTLY (2-5 seconds)
+6. No "Processing transcript..." message should appear
+
+To verify it's OpenAI (not N8N):
+See: /home/user/PrimeAI/VERIFY-OPENAI-TRANSCRIPTION.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+No transcript appearing:
+  1. Check Railway logs for OpenAI errors
+  2. Verify OPENAI_API_KEY is set in Railway
+  3. Check OpenAI account has credits/quota
+
+Clear cache:          npx expo start -c
+Reinstall packages:   rm -rf node_modules && npm install
+Check Railway logs:   railway.app/dashboard → PrimeAI → View Logs
+Full guide:           cat /home/user/BUILD-26-DEPLOYMENT.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BUILD 26 INFO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Backup:     /home/user/PrimeAI-backup-build26-20251127-100048.tar.gz
+Git Tag:    v1.0-build26
+Branch:     claude/restore-app-backup-01838tKxn5CpUTp23WERyQrm
+Date:       November 27, 2025
+
+Features:   ✅ Auth
+            ✅ Contact monitoring
+            ✅ Instant OpenAI Whisper transcription (NEW!)
+            ✅ N8N optional for power users (NEW!)
+            ✅ Fixed save button bug (NEW!)
+            ✅ No polling needed (NEW!)
+
+Changes from Build 25:
+  • Added OpenAI Whisper API integration (instant transcription)
+  • Made N8N webhook optional (power user feature)
+  • Fixed save button recording upload bug
+  • Removed transcript polling mechanism
+  • Improved user experience (instant feedback)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPARISON: BUILD 25 vs BUILD 26
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BUILD 25:
+  • N8N required for transcription
+  • Transcript polling every 3 seconds
+  • ~30 seconds to see transcript
+  • "Processing transcript..." waiting UI
+  • Save button bug (event object issue)
+
+BUILD 26:
+  • N8N optional (OpenAI direct)
+  • No polling needed
+  • ~5 seconds to see transcript
+  • Instant transcript display
+  • Save button bug fixed
+
+IMPACT: ⚡ 6x faster transcription, 🔧 simpler setup, 💰 lower cost
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
