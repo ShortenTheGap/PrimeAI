@@ -1151,8 +1151,26 @@ const ContactCaptureScreen = () => {
       }
 
       let audioBase64 = null;
+      let audioUrl = null;
+
       if (recordingUri) {
-        audioBase64 = await convertRecordingToBase64(recordingUri);
+        // Check if this is a local file or server path
+        const isLocalFile = recordingUri.startsWith('file://');
+        const isServerPath = recordingUri.startsWith('/uploads/') ||
+                            recordingUri.startsWith('http://') ||
+                            recordingUri.startsWith('https://');
+
+        if (isLocalFile) {
+          // Convert local file to base64 for N8N
+          console.log('🔄 Converting local recording to base64');
+          audioBase64 = await convertRecordingToBase64(recordingUri);
+        } else if (isServerPath) {
+          // Recording already on server, send URL
+          audioUrl = recordingUri.startsWith('/uploads/')
+            ? `${API.API_URL}${recordingUri}`
+            : recordingUri;
+          console.log('🔗 Recording already on server:', audioUrl);
+        }
       }
 
       const payload = {
@@ -1163,6 +1181,7 @@ const ContactCaptureScreen = () => {
           email: formData.email,
         },
         audio_base64: audioBase64,
+        audio_url: audioUrl,
         hasRecording: hasRecording,
         photoUrl: photoUrl,
         hasPhoto: !!photoUrl,
@@ -1175,6 +1194,8 @@ const ContactCaptureScreen = () => {
         photoUrl: photoUrl,
         photoUrlType: typeof photoUrl,
         hasPhoto: !!photoUrl,
+        hasAudioBase64: !!audioBase64,
+        hasAudioUrl: !!audioUrl,
       });
 
       const response = await fetch(masterFlowUrl, {
