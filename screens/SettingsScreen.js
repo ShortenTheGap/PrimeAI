@@ -67,7 +67,7 @@ const SettingsScreen = () => {
         setWelcomeMessage(defaultWelcome);
       }
       if (!savedLink) {
-        const defaultLink = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's the link to [insert link to your product/service] we discussed. \noh... BTW here's the picture I took from us 😎 {photo}";
+        const defaultLink = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
         setLinkMessage(defaultLink);
       }
     } catch (error) {
@@ -391,7 +391,7 @@ const SettingsScreen = () => {
           <View style={{marginBottom: 20}}>
             <Text style={styles.webhookLabel}>Welcome Message</Text>
             <TextInput
-              style={[styles.webhookInput, {height: 80}]}
+              style={[styles.webhookInput, {height: 120}]}
               value={welcomeMessage}
               onChangeText={(text) => {
                 setWelcomeMessage(text);
@@ -400,7 +400,7 @@ const SettingsScreen = () => {
               placeholder="Hi {name}! Great meeting you..."
               placeholderTextColor="#64748b"
               multiline
-              numberOfLines={3}
+              numberOfLines={5}
             />
             <Text style={styles.webhookHint}>
               Opens your SMS app with this pre-filled message
@@ -411,7 +411,7 @@ const SettingsScreen = () => {
           <View>
             <Text style={styles.webhookLabel}>Link/Invitation Message</Text>
             <TextInput
-              style={[styles.webhookInput, {height: 80}]}
+              style={[styles.webhookInput, {height: 120}]}
               value={linkMessage}
               onChangeText={(text) => {
                 setLinkMessage(text);
@@ -420,7 +420,7 @@ const SettingsScreen = () => {
               placeholder="Hi {name}! Here's my contact info..."
               placeholderTextColor="#64748b"
               multiline
-              numberOfLines={3}
+              numberOfLines={5}
             />
             <Text style={styles.webhookHint}>
               Opens your SMS app with this pre-filled message
