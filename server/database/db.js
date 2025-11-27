@@ -26,6 +26,8 @@ if (usePostgres) {
           password_hash TEXT,
           device_id TEXT UNIQUE,
           device_name TEXT,
+          sms_credits INTEGER DEFAULT 0,
+          sms_delivery_method TEXT DEFAULT 'twilio',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -96,6 +98,49 @@ if (usePostgres) {
       // MIGRATION: Make device_id nullable for email/password users
       await pool.query(`
         ALTER TABLE users ALTER COLUMN device_id DROP NOT NULL
+      `);
+
+      // MIGRATION: Add SMS-related columns to users table
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'sms_credits'
+          ) THEN
+            ALTER TABLE users ADD COLUMN sms_credits INTEGER DEFAULT 0;
+          END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'sms_delivery_method'
+          ) THEN
+            ALTER TABLE users ADD COLUMN sms_delivery_method TEXT DEFAULT 'twilio';
+          END IF;
+        END $$;
+      `);
+
+      // Create SMS logs table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS sms_logs (
+          log_id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          contact_id INTEGER,
+          phone_number TEXT NOT NULL,
+          message_type TEXT NOT NULL,
+          delivery_method TEXT NOT NULL,
+          twilio_sid TEXT,
+          status TEXT DEFAULT 'pending',
+          error_message TEXT,
+          credits_used INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+        )
+      `);
+
+      // Create index for faster SMS log queries
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_sms_logs_user_id ON sms_logs(user_id)
       `);
 
       // MIGRATION: Create legacy users for existing contacts before adding foreign key
@@ -231,6 +276,47 @@ if (usePostgres) {
     deleteContact: async (id, userId) => {
       await pool.query('DELETE FROM contacts WHERE contact_id = $1 AND user_id = $2', [id, userId]);
       return true;
+    },
+
+    // SMS-related functions
+    getSMSCredits: async (userId) => {
+      const result = await pool.query('SELECT sms_credits FROM users WHERE user_id = $1', [userId]);
+      return result.rows[0]?.sms_credits || 0;
+    },
+
+    deductSMSCredits: async (userId, amount) => {
+      await pool.query('UPDATE users SET sms_credits = sms_credits - $1 WHERE user_id = $2', [amount, userId]);
+    },
+
+    addSMSCredits: async (userId, amount) => {
+      await pool.query('UPDATE users SET sms_credits = sms_credits + $1 WHERE user_id = $2', [amount, userId]);
+    },
+
+    setSMSDeliveryMethod: async (userId, method) => {
+      await pool.query('UPDATE users SET sms_delivery_method = $1 WHERE user_id = $2', [method, userId]);
+    },
+
+    getSMSDeliveryMethod: async (userId) => {
+      const result = await pool.query('SELECT sms_delivery_method FROM users WHERE user_id = $1', [userId]);
+      return result.rows[0]?.sms_delivery_method || 'twilio';
+    },
+
+    logSMS: async (userId, contactId, phoneNumber, messageType, deliveryMethod, twilioSid, status, errorMessage, creditsUsed) => {
+      const result = await pool.query(
+        `INSERT INTO sms_logs (user_id, contact_id, phone_number, message_type, delivery_method, twilio_sid, status, error_message, credits_used)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING *`,
+        [userId, contactId, phoneNumber, messageType, deliveryMethod, twilioSid || null, status, errorMessage || null, creditsUsed]
+      );
+      return result.rows[0];
+    },
+
+    getSMSLogs: async (userId, limit = 50) => {
+      const result = await pool.query(
+        'SELECT * FROM sms_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2',
+        [userId, limit]
+      );
+      return result.rows;
     }
   };
 
@@ -248,6 +334,8 @@ if (usePostgres) {
       password_hash TEXT,
       device_id TEXT UNIQUE,
       device_name TEXT,
+      sms_credits INTEGER DEFAULT 0,
+      sms_delivery_method TEXT DEFAULT 'twilio',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -267,7 +355,23 @@ if (usePostgres) {
       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS sms_logs (
+      log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      contact_id INTEGER,
+      phone_number TEXT NOT NULL,
+      message_type TEXT NOT NULL,
+      delivery_method TEXT NOT NULL,
+      twilio_sid TEXT,
+      status TEXT DEFAULT 'pending',
+      error_message TEXT,
+      credits_used INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sms_logs_user_id ON sms_logs(user_id);
   `);
 
   console.log('✅ SQLite database initialized with multi-user support');
@@ -351,6 +455,49 @@ if (usePostgres) {
       const stmt = sqlite.prepare('DELETE FROM contacts WHERE contact_id = ? AND user_id = ?');
       stmt.run(id, userId);
       return true;
+    },
+
+    // SMS-related functions
+    getSMSCredits: async (userId) => {
+      const stmt = sqlite.prepare('SELECT sms_credits FROM users WHERE user_id = ?');
+      const result = stmt.get(userId);
+      return result?.sms_credits || 0;
+    },
+
+    deductSMSCredits: async (userId, amount) => {
+      const stmt = sqlite.prepare('UPDATE users SET sms_credits = sms_credits - ? WHERE user_id = ?');
+      stmt.run(amount, userId);
+    },
+
+    addSMSCredits: async (userId, amount) => {
+      const stmt = sqlite.prepare('UPDATE users SET sms_credits = sms_credits + ? WHERE user_id = ?');
+      stmt.run(amount, userId);
+    },
+
+    setSMSDeliveryMethod: async (userId, method) => {
+      const stmt = sqlite.prepare('UPDATE users SET sms_delivery_method = ? WHERE user_id = ?');
+      stmt.run(method, userId);
+    },
+
+    getSMSDeliveryMethod: async (userId) => {
+      const stmt = sqlite.prepare('SELECT sms_delivery_method FROM users WHERE user_id = ?');
+      const result = stmt.get(userId);
+      return result?.sms_delivery_method || 'twilio';
+    },
+
+    logSMS: async (userId, contactId, phoneNumber, messageType, deliveryMethod, twilioSid, status, errorMessage, creditsUsed) => {
+      const stmt = sqlite.prepare(`
+        INSERT INTO sms_logs (user_id, contact_id, phone_number, message_type, delivery_method, twilio_sid, status, error_message, credits_used)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const result = stmt.run(userId, contactId, phoneNumber, messageType, deliveryMethod, twilioSid || null, status, errorMessage || null, creditsUsed);
+      const getStmt = sqlite.prepare('SELECT * FROM sms_logs WHERE log_id = ?');
+      return getStmt.get(result.lastInsertRowid);
+    },
+
+    getSMSLogs: async (userId, limit = 50) => {
+      const stmt = sqlite.prepare('SELECT * FROM sms_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT ?');
+      return stmt.all(userId, limit);
     }
   };
 }

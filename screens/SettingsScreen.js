@@ -22,12 +22,15 @@ const SettingsScreen = () => {
   const [hasPermissions, setHasPermissions] = useState(false);
   const [masterFlowUrl, setMasterFlowUrl] = useState('');
   const [userInfo, setUserInfo] = useState(null);
+  const [smsDeliveryMethod, setSmsDeliveryMethod] = useState('twilio');
+  const [smsCredits, setSmsCredits] = useState(0);
 
   useEffect(() => {
     checkPermissions();
     loadSettings();
     loadUserInfo();
     loadMonitoringState();
+    loadSMSSettings();
   }, []);
 
   // Debug: Monitor masterFlowUrl state changes
@@ -53,6 +56,67 @@ const SettingsScreen = () => {
       if (savedUrl) setMasterFlowUrl(savedUrl);
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const loadSMSSettings = async () => {
+    try {
+      const user = await userService.getUser();
+      const token = await userService.getToken();
+
+      if (!user) {
+        console.log('⚠️  No user logged in, skipping SMS settings load');
+        return;
+      }
+
+      const response = await fetch(`${API.API_URL}/api/sms/settings`, {
+        headers: {
+          'x-user-id': user.userId,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSmsDeliveryMethod(data.deliveryMethod || 'twilio');
+        setSmsCredits(data.credits || 0);
+        console.log('📱 SMS settings loaded:', data);
+      }
+    } catch (error) {
+      console.error('Error loading SMS settings:', error);
+    }
+  };
+
+  const updateSMSDeliveryMethod = async (method) => {
+    try {
+      const user = await userService.getUser();
+      const token = await userService.getToken();
+
+      if (!user) {
+        Alert.alert('Error', 'Please log in to update SMS settings');
+        return;
+      }
+
+      const response = await fetch(`${API.API_URL}/api/sms/settings/delivery-method`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.userId,
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ method })
+      });
+
+      if (response.ok) {
+        setSmsDeliveryMethod(method);
+        console.log(`✅ SMS delivery method updated to: ${method}`);
+        Alert.alert('Success', `SMS delivery method set to ${method === 'twilio' ? 'Built-in SMS' : 'N8N Webhook'}`);
+      } else {
+        throw new Error('Failed to update delivery method');
+      }
+    } catch (error) {
+      console.error('Error updating SMS delivery method:', error);
+      Alert.alert('Error', 'Failed to update SMS delivery method');
     }
   };
 
@@ -284,6 +348,70 @@ const SettingsScreen = () => {
             </Text>
           </View>
         )}
+      </View>
+
+      {/* SMS Delivery Method */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>📱 SMS Delivery Method</Text>
+        </View>
+
+        <View style={styles.webhookCard}>
+          <Text style={styles.settingDescription} style={{marginBottom: 16, color: '#94a3b8'}}>
+            Choose how SMS messages are sent to your contacts
+          </Text>
+
+          {/* Twilio Option */}
+          <TouchableOpacity
+            style={[
+              styles.radioOption,
+              smsDeliveryMethod === 'twilio' && styles.radioOptionSelected
+            ]}
+            onPress={() => updateSMSDeliveryMethod('twilio')}
+          >
+            <View style={styles.radioButton}>
+              {smsDeliveryMethod === 'twilio' && <View style={styles.radioButtonInner} />}
+            </View>
+            <View style={styles.radioContent}>
+              <Text style={styles.radioLabel}>Built-in SMS (Twilio)</Text>
+              <Text style={styles.radioDescription}>
+                Send SMS directly from the app
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Show credits if Twilio is selected */}
+          {smsDeliveryMethod === 'twilio' && (
+            <View style={styles.creditsCard}>
+              <Text style={styles.creditsLabel}>SMS Credits Remaining:</Text>
+              <Text style={styles.creditsValue}>{smsCredits}</Text>
+              {smsCredits === 0 && (
+                <Text style={styles.creditsWarning}>
+                  ⚠️ You have no credits. Contact support to purchase more.
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* N8N Option */}
+          <TouchableOpacity
+            style={[
+              styles.radioOption,
+              smsDeliveryMethod === 'n8n' && styles.radioOptionSelected
+            ]}
+            onPress={() => updateSMSDeliveryMethod('n8n')}
+          >
+            <View style={styles.radioButton}>
+              {smsDeliveryMethod === 'n8n' && <View style={styles.radioButtonInner} />}
+            </View>
+            <View style={styles.radioContent}>
+              <Text style={styles.radioLabel}>N8N Webhook</Text>
+              <Text style={styles.radioDescription}>
+                Send SMS via your N8N workflow (configure below)
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* N8N Master Flow Webhook */}
@@ -537,6 +665,74 @@ const styles = StyleSheet.create({
     color: '#10b981',
     marginTop: 4,
     fontFamily: 'monospace',
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#334155',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  radioOptionSelected: {
+    borderColor: '#6366f1',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+  },
+  radioButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#94a3b8',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#6366f1',
+  },
+  radioContent: {
+    flex: 1,
+  },
+  radioLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#f1f5f9',
+    marginBottom: 4,
+  },
+  radioDescription: {
+    fontSize: 14,
+    color: '#94a3b8',
+  },
+  creditsCard: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 4,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#6366f1',
+  },
+  creditsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f1f5f9',
+    marginBottom: 4,
+  },
+  creditsValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#6366f1',
+  },
+  creditsWarning: {
+    fontSize: 12,
+    color: '#f59e0b',
+    marginTop: 8,
   },
 });
 

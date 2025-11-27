@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/ApiService';
+import userService from '../services/UserService';
 import API from '../config/api';
 
 // Cache keys (must match ContactListScreen)
@@ -1035,6 +1036,113 @@ const ContactCaptureScreen = () => {
       }
     };
 
+  const sendMessage = async (action) => {
+    try {
+      // Get user info
+      const user = await userService.getUser();
+      const token = await userService.getToken();
+
+      if (!user) {
+        Alert.alert('Error', 'Please log in to send messages');
+        return;
+      }
+
+      // Get SMS delivery method from backend
+      const settingsResponse = await fetch(`${API.API_URL}/api/sms/settings`, {
+        headers: {
+          'x-user-id': user.userId,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!settingsResponse.ok) {
+        throw new Error('Failed to get SMS settings');
+      }
+
+      const settings = await settingsResponse.json();
+      const deliveryMethod = settings.deliveryMethod || 'twilio';
+
+      console.log('📱 SMS delivery method:', deliveryMethod);
+
+      if (deliveryMethod === 'n8n') {
+        // Use N8N webhook
+        await sendMasterWebhook(action);
+      } else {
+        // Use Twilio backend
+        await sendViaTwilio(action, user, token);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('❌ Error', `Failed to send message: ${error.message}`);
+    }
+  };
+
+  const sendViaTwilio = async (action, user, token) => {
+    try {
+      if (!formData.phone) {
+        Alert.alert('Error', 'Phone number is required to send SMS');
+        return;
+      }
+
+      // Get contact_id from route params if in edit mode
+      const mode = route.params?.mode || 'add';
+      const rawContact = route.params?.contact;
+      const contactId = mode === 'edit' && rawContact ? rawContact.contact_id : null;
+
+      // Create message body based on action
+      let messageBody = '';
+      if (action === 'welcome') {
+        messageBody = `Hi ${formData.name || 'there'}! Thanks for connecting. Looking forward to staying in touch!`;
+      } else if (action === 'link') {
+        messageBody = `Hi ${formData.name || 'there'}! Here's a link to connect: [Your link here]`;
+      } else if (action === 'follow') {
+        messageBody = `Hi ${formData.name || 'there'}! Following up on our conversation. Let me know if you have any questions!`;
+      }
+
+      console.log('📤 Sending SMS via Twilio:', { action, phone: formData.phone });
+
+      const response = await fetch(`${API.API_URL}/api/sms/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.userId,
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          contactId,
+          phoneNumber: formData.phone,
+          messageType: action,
+          messageBody
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        Alert.alert(
+          '✅ Success!',
+          `SMS sent successfully!\n\nAction: ${action}\nContact: ${formData.name || 'N/A'}\nCredits remaining: ${result.creditsRemaining}`
+        );
+      } else {
+        if (response.status === 402) {
+          Alert.alert(
+            '❌ Insufficient Credits',
+            'You have no SMS credits remaining. Please contact support to purchase more credits.',
+            [
+              { text: 'OK', style: 'cancel' },
+              { text: 'Go to Settings', onPress: () => navigation.navigate('Settings') }
+            ]
+          );
+        } else {
+          Alert.alert('❌ Error', result.error || 'Failed to send SMS');
+        }
+      }
+    } catch (error) {
+      console.error('Twilio SMS error:', error);
+      Alert.alert('❌ Error', `Failed to send SMS: ${error.message}`);
+    }
+  };
+
   const sendMasterWebhook = async (action) => {
     try {
       const masterFlowUrl = await AsyncStorage.getItem('@webhook:master_flow');
@@ -1258,14 +1366,14 @@ const ContactCaptureScreen = () => {
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => sendMasterWebhook('welcome')}
+          onPress={() => sendMessage('welcome')}
         >
           <Text style={styles.actionButtonText}>📧 Send Welcome Message</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.actionButton, styles.actionButtonSecondary]}
-          onPress={() => sendMasterWebhook('link')}
+          onPress={() => sendMessage('link')}
         >
           <Text style={styles.actionButtonText}>🔗 Send Invitation Link</Text>
         </TouchableOpacity>
