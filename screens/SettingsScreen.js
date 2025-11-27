@@ -63,11 +63,11 @@ const SettingsScreen = () => {
 
       // Set defaults if not configured
       if (!savedWelcome) {
-        const defaultWelcome = "Hi {name}! Great meeting you. Looking forward to staying in touch! {photo}";
+        const defaultWelcome = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
         setWelcomeMessage(defaultWelcome);
       }
       if (!savedLink) {
-        const defaultLink = "Hi {name}! Here's my contact info: [Add your link] {photo}";
+        const defaultLink = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's the link to [insert link to your product/service] we discussed. \noh... BTW here's the picture I took from us 😎 {photo}";
         setLinkMessage(defaultLink);
       }
     } catch (error) {
