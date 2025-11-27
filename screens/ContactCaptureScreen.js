@@ -1061,6 +1061,26 @@ const ContactCaptureScreen = () => {
       }
     };
 
+  // Route message sending based on user's delivery method preference
+  const handleSendMessage = async (action) => {
+    try {
+      // Check delivery method preference
+      const deliveryMethod = await AsyncStorage.getItem('@sms:delivery_method') || 'native';
+      console.log('📤 SMS delivery method:', deliveryMethod);
+
+      if (deliveryMethod === 'n8n') {
+        // Use N8N webhook
+        await sendMasterWebhook(action);
+      } else {
+        // Use native SMS
+        await sendMessage(action);
+      }
+    } catch (error) {
+      console.error('Error handling message send:', error);
+      Alert.alert('❌ Error', `Failed to send message: ${error.message}`);
+    }
+  };
+
   const sendMessage = async (action) => {
     try {
       if (!formData.phone) {
@@ -1343,14 +1363,14 @@ const ContactCaptureScreen = () => {
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => sendMessage('welcome')}
+          onPress={() => handleSendMessage('welcome')}
         >
           <Text style={styles.actionButtonText}>📧 Send Welcome Message</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.actionButton, styles.actionButtonSecondary]}
-          onPress={() => sendMessage('link')}
+          onPress={() => handleSendMessage('link')}
         >
           <Text style={styles.actionButtonText}>🔗 Send Invitation Link</Text>
         </TouchableOpacity>

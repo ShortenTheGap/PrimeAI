@@ -24,6 +24,7 @@ const SettingsScreen = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [welcomeMessage, setWelcomeMessage] = useState('');
   const [linkMessage, setLinkMessage] = useState('');
+  const [smsDeliveryMethod, setSmsDeliveryMethod] = useState('native'); // 'native' or 'n8n'
 
   useEffect(() => {
     checkPermissions();
@@ -52,11 +53,13 @@ const SettingsScreen = () => {
       const savedUrl = await AsyncStorage.getItem('@webhook:master_flow');
       const savedWelcome = await AsyncStorage.getItem('@sms:welcome_message');
       const savedLink = await AsyncStorage.getItem('@sms:link_message');
+      const savedDeliveryMethod = await AsyncStorage.getItem('@sms:delivery_method');
 
       console.log('📥 Loading settings from AsyncStorage');
       if (savedUrl) setMasterFlowUrl(savedUrl);
       if (savedWelcome) setWelcomeMessage(savedWelcome);
       if (savedLink) setLinkMessage(savedLink);
+      if (savedDeliveryMethod) setSmsDeliveryMethod(savedDeliveryMethod);
 
       // Set defaults if not configured
       if (!savedWelcome) {
@@ -79,6 +82,16 @@ const SettingsScreen = () => {
       console.log(`✅ ${type} message template saved`);
     } catch (error) {
       console.error(`Error saving ${type} message template:`, error);
+    }
+  };
+
+  const saveSmsDeliveryMethod = async (method) => {
+    try {
+      await AsyncStorage.setItem('@sms:delivery_method', method);
+      setSmsDeliveryMethod(method);
+      console.log(`✅ SMS delivery method set to: ${method}`);
+    } catch (error) {
+      console.error('Error saving SMS delivery method:', error);
     }
   };
 
@@ -310,6 +323,57 @@ const SettingsScreen = () => {
             </Text>
           </View>
         )}
+      </View>
+
+      {/* SMS Delivery Method */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>📱 SMS Delivery Method</Text>
+        </View>
+
+        <View style={styles.webhookCard}>
+          <Text style={styles.settingDescription} style={{marginBottom: 16, color: '#94a3b8'}}>
+            Choose how you want to send SMS messages to contacts
+          </Text>
+
+          {/* Native SMS Option */}
+          <TouchableOpacity
+            style={[
+              styles.radioOption,
+              smsDeliveryMethod === 'native' && styles.radioOptionSelected
+            ]}
+            onPress={() => saveSmsDeliveryMethod('native')}
+          >
+            <View style={styles.radioButton}>
+              {smsDeliveryMethod === 'native' && <View style={styles.radioButtonInner} />}
+            </View>
+            <View style={styles.radioContent}>
+              <Text style={styles.radioLabel}>📱 Native SMS (Recommended)</Text>
+              <Text style={styles.radioDescription}>
+                Opens your phone's SMS app with pre-filled message. Messages sent from your personal number. Free.
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* N8N Webhook Option */}
+          <TouchableOpacity
+            style={[
+              styles.radioOption,
+              smsDeliveryMethod === 'n8n' && styles.radioOptionSelected
+            ]}
+            onPress={() => saveSmsDeliveryMethod('n8n')}
+          >
+            <View style={styles.radioButton}>
+              {smsDeliveryMethod === 'n8n' && <View style={styles.radioButtonInner} />}
+            </View>
+            <View style={styles.radioContent}>
+              <Text style={styles.radioLabel}>🔗 N8N Webhook (Advanced)</Text>
+              <Text style={styles.radioDescription}>
+                Sends data to your N8N workflow for custom SMS delivery. Requires N8N Master Flow URL configuration.
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* SMS Message Templates */}
