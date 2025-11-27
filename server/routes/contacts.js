@@ -194,11 +194,29 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = nu
   }
 };
 
-// GET all contacts (with authentication)
+// GET all contacts (with authentication and optional incremental sync)
 router.get('/', authenticateUser, async (req, res) => {
   try {
-    const contacts = await db.getAllContacts(req.userId);
-    res.json(contacts);
+    const { since } = req.query; // Optional timestamp to get only contacts modified after this time
+
+    if (since) {
+      // Incremental sync: only return contacts modified since the given timestamp
+      const sinceDate = new Date(parseInt(since, 10));
+      console.log(`📅 Incremental sync requested: contacts since ${sinceDate.toISOString()}`);
+
+      const contacts = await db.getAllContacts(req.userId);
+      const recentContacts = contacts.filter(contact => {
+        const updatedAt = new Date(contact.updated_at || contact.created_at);
+        return updatedAt > sinceDate;
+      });
+
+      console.log(`✅ Returning ${recentContacts.length} contacts modified since ${sinceDate.toISOString()}`);
+      res.json(recentContacts);
+    } else {
+      // Full sync: return all contacts
+      const contacts = await db.getAllContacts(req.userId);
+      res.json(contacts);
+    }
   } catch (error) {
     console.error('Error fetching contacts:', error);
     res.status(500).json({ error: 'Failed to fetch contacts' });

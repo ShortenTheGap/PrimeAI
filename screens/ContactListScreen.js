@@ -110,25 +110,58 @@ const ContactListScreen = () => {
     }
   };
 
-  // Sync from server
-  const syncFromServer = async (showLoading = true) => {
+  // Sync from server (with incremental sync support)
+  const syncFromServer = async (showLoading = true, fullSync = false) => {
     if (showLoading) {
       setIsLoading(true);
     }
 
     try {
-      console.log(`🌐 Syncing contacts from server (${API.ENV_NAME})...`);
-      const response = await apiClient.get('/api/contacts');
-      const contactsList = response.data || [];
+      let url = '/api/contacts';
+      let syncType = 'full';
 
-      console.log(`✅ Synced ${contactsList.length} contacts from server`);
-      setContacts(contactsList);
-      setFilteredContacts(contactsList);
+      // Use incremental sync if we have cached data (unless fullSync is forced)
+      if (!fullSync && contacts.length > 0) {
+        const cachedData = await readFromCache();
+        if (cachedData && cachedData.timestamp) {
+          // Only fetch contacts modified since last sync
+          url = `/api/contacts?since=${cachedData.timestamp}`;
+          syncType = 'incremental';
+          console.log(`🔄 Incremental sync: fetching contacts since ${new Date(cachedData.timestamp).toISOString()}`);
+        }
+      }
 
-      // Save to cache
-      await saveToCache(contactsList);
+      console.log(`🌐 Syncing contacts from server (${API.ENV_NAME}) - ${syncType} sync...`);
+      const response = await apiClient.get(url);
+      const newContacts = response.data || [];
 
-      return contactsList;
+      if (syncType === 'incremental' && newContacts.length > 0) {
+        // Merge new/updated contacts with existing ones
+        console.log(`✅ Received ${newContacts.length} new/updated contacts`);
+
+        const existingContactsMap = new Map(contacts.map(c => [c.contact_id, c]));
+        newContacts.forEach(contact => {
+          existingContactsMap.set(contact.contact_id, contact);
+        });
+
+        const mergedContacts = Array.from(existingContactsMap.values());
+        setContacts(mergedContacts);
+        setFilteredContacts(mergedContacts);
+        await saveToCache(mergedContacts);
+
+        console.log(`📊 Total contacts after merge: ${mergedContacts.length}`);
+        return mergedContacts;
+      } else if (syncType === 'incremental') {
+        console.log('✅ No new contacts since last sync');
+        return contacts;
+      } else {
+        // Full sync
+        console.log(`✅ Synced ${newContacts.length} contacts from server`);
+        setContacts(newContacts);
+        setFilteredContacts(newContacts);
+        await saveToCache(newContacts);
+        return newContacts;
+      }
     } catch (error) {
       console.error('Error syncing from server:', error);
 
