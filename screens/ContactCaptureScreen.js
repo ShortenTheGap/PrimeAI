@@ -1168,7 +1168,13 @@ const ContactCaptureScreen = () => {
         timestamp: new Date().toISOString(),
       };
 
-      console.log('Sending webhook with action:', action);
+      console.log('📤 Sending webhook with payload:', {
+        action,
+        contactName: formData.name,
+        photoUrl: photoUrl,
+        photoUrlType: typeof photoUrl,
+        hasPhoto: !!photoUrl,
+      });
 
       const response = await fetch(masterFlowUrl, {
         method: 'POST',
