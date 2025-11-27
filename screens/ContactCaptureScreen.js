@@ -250,6 +250,12 @@ const ContactCaptureScreen = () => {
 
   // Provide global function to show unsaved changes alert
   useEffect(() => {
+    // Only create the alert function if there are unsaved changes
+    if (!hasUnsavedChanges || savedSuccessfully || isSaving) {
+      console.log('🔧 No unsaved changes - skipping alert function setup');
+      return;
+    }
+
     // Capture current values in closure so they don't get lost during navigation
     const currentFormData = { ...formData };
     const currentMode = route.params?.mode || 'add';
@@ -324,9 +330,10 @@ const ContactCaptureScreen = () => {
     };
 
     return () => {
+      console.log('🧹 Alert function useEffect cleanup');
       global.showUnsavedChangesAlert = null;
     };
-  }, [formData, route.params, recordingUri, photoUrl]);
+  }, [formData, route.params, recordingUri, photoUrl, hasUnsavedChanges, savedSuccessfully, isSaving]);
 
   // Handle Android hardware back button
   useEffect(() => {

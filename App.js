@@ -234,6 +234,7 @@ const App = () => {
                 global.showUnsavedChangesAlert(() => {
                   console.log('✅ User confirmed - navigating to Settings');
                   global.hasUnsavedContactChanges = false;
+                  global.showUnsavedChangesAlert = null;
                   navigation.navigate('Settings');
                 });
               } else {
@@ -271,6 +272,7 @@ const App = () => {
                 global.showUnsavedChangesAlert(() => {
                   console.log('✅ User confirmed - navigating to ContactList');
                   global.hasUnsavedContactChanges = false;
+                  global.showUnsavedChangesAlert = null;
                   navigation.navigate('ContactList');
                 });
               } else {
