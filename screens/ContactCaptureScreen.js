@@ -319,10 +319,30 @@ const ContactCaptureScreen = () => {
             style: 'destructive',
             onPress: () => {
               console.log('User chose to discard changes - resetting state and navigating');
+
+              // Clear flags
               setHasUnsavedChanges(false);
               setSavedSuccessfully(true);
               global.hasUnsavedContactChanges = false;
               global.showUnsavedChangesAlert = null;
+
+              // Clear form data to prevent re-triggering unsaved changes detection
+              if (currentMode === 'add') {
+                // For add mode, clear everything
+                setFormData({
+                  name: '',
+                  phone: '',
+                  email: '',
+                  recordID: null,
+                });
+                setRecordingUri(null);
+                setHasRecording(false);
+                setPhotoUrl(null);
+                setTranscript(null);
+                console.log('🗑️ Cleared form data (add mode)');
+              }
+              // For edit mode, form data stays but savedSuccessfully flag prevents re-detection
+
               if (onConfirm) onConfirm();
             },
           },
@@ -377,6 +397,29 @@ const ContactCaptureScreen = () => {
             style: 'destructive',
             onPress: () => {
               console.log('User chose to discard changes');
+
+              // Clear form data if in add mode
+              const currentMode = route.params?.mode || 'add';
+              if (currentMode === 'add') {
+                setFormData({
+                  name: '',
+                  phone: '',
+                  email: '',
+                  recordID: null,
+                });
+                setRecordingUri(null);
+                setHasRecording(false);
+                setPhotoUrl(null);
+                setTranscript(null);
+                console.log('🗑️ Cleared form data (add mode - hardware back)');
+              }
+
+              // Clear flags
+              setHasUnsavedChanges(false);
+              setSavedSuccessfully(true);
+              global.hasUnsavedContactChanges = false;
+              global.showUnsavedChangesAlert = null;
+
               navigation.goBack();
             },
           },
@@ -446,6 +489,29 @@ const ContactCaptureScreen = () => {
             style: 'destructive',
             onPress: () => {
               console.log('User chose to discard changes');
+
+              // Clear form data if in add mode
+              const currentMode = route.params?.mode || 'add';
+              if (currentMode === 'add') {
+                setFormData({
+                  name: '',
+                  phone: '',
+                  email: '',
+                  recordID: null,
+                });
+                setRecordingUri(null);
+                setHasRecording(false);
+                setPhotoUrl(null);
+                setTranscript(null);
+                console.log('🗑️ Cleared form data (add mode - beforeRemove)');
+              }
+
+              // Clear flags
+              setHasUnsavedChanges(false);
+              setSavedSuccessfully(true);
+              global.hasUnsavedContactChanges = false;
+              global.showUnsavedChangesAlert = null;
+
               navigation.dispatch(e.data.action);
             },
           },
