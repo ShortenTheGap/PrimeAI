@@ -1702,7 +1702,7 @@ const ContactCaptureScreen = () => {
           style={[styles.actionButton, styles.actionButtonCalendar]}
           onPress={handleCreateCalendarEvent}
         >
-          <Text style={styles.actionButtonText}>📅 Create Calendar Reminder</Text>
+          <Text style={styles.actionButtonText}>📅 Create Follow Up Reminder</Text>
         </TouchableOpacity>
       </View>
 
