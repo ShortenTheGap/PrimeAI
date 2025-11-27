@@ -135,17 +135,24 @@ const ContactCaptureScreen = () => {
     const currentMode = route.params?.mode || 'add';
 
     if (currentMode === 'edit' && rawContact) {
+      // Convert relative photo URL to absolute for proper comparison
+      let originalPhotoUrl = rawContact.photo_url || rawContact.photoUrl || null;
+      if (originalPhotoUrl && originalPhotoUrl.startsWith('/uploads/')) {
+        originalPhotoUrl = `${API.API_URL}${originalPhotoUrl}`;
+      }
+
       setOriginalData({
         name: rawContact.name || '',
         phone: rawContact.phone || '',
         email: rawContact.email || '',
         recordingUri: rawContact.recording_uri || rawContact.recordingUri || null,
-        photoUrl: rawContact.photo_url || rawContact.photoUrl || null,
+        photoUrl: originalPhotoUrl,
       });
       console.log('📝 Stored original data for edit mode:', {
         name: rawContact.name,
         phone: rawContact.phone,
         email: rawContact.email,
+        photoUrl: originalPhotoUrl,
       });
     } else {
       setOriginalData(null);
