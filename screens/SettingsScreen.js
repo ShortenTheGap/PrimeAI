@@ -22,15 +22,14 @@ const SettingsScreen = () => {
   const [hasPermissions, setHasPermissions] = useState(false);
   const [masterFlowUrl, setMasterFlowUrl] = useState('');
   const [userInfo, setUserInfo] = useState(null);
-  const [smsDeliveryMethod, setSmsDeliveryMethod] = useState('twilio');
-  const [smsCredits, setSmsCredits] = useState(0);
+  const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [linkMessage, setLinkMessage] = useState('');
 
   useEffect(() => {
     checkPermissions();
     loadSettings();
     loadUserInfo();
     loadMonitoringState();
-    loadSMSSettings();
   }, []);
 
   // Debug: Monitor masterFlowUrl state changes
@@ -51,72 +50,35 @@ const SettingsScreen = () => {
   const loadSettings = async () => {
     try {
       const savedUrl = await AsyncStorage.getItem('@webhook:master_flow');
+      const savedWelcome = await AsyncStorage.getItem('@sms:welcome_message');
+      const savedLink = await AsyncStorage.getItem('@sms:link_message');
 
-      console.log('📥 Loading N8N URL from AsyncStorage:', savedUrl);
+      console.log('📥 Loading settings from AsyncStorage');
       if (savedUrl) setMasterFlowUrl(savedUrl);
+      if (savedWelcome) setWelcomeMessage(savedWelcome);
+      if (savedLink) setLinkMessage(savedLink);
+
+      // Set defaults if not configured
+      if (!savedWelcome) {
+        const defaultWelcome = "Hi {name}! Great meeting you. Looking forward to staying in touch!";
+        setWelcomeMessage(defaultWelcome);
+      }
+      if (!savedLink) {
+        const defaultLink = "Hi {name}! Here's my contact info: [Add your link]";
+        setLinkMessage(defaultLink);
+      }
     } catch (error) {
       console.error('Error loading settings:', error);
     }
   };
 
-  const loadSMSSettings = async () => {
+  const saveMessageTemplate = async (type, value) => {
     try {
-      const user = await userService.getUser();
-      const token = await userService.getToken();
-
-      if (!user) {
-        console.log('⚠️  No user logged in, skipping SMS settings load');
-        return;
-      }
-
-      const response = await fetch(`${API.API_URL}/api/sms/settings`, {
-        headers: {
-          'x-user-id': user.userId,
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSmsDeliveryMethod(data.deliveryMethod || 'twilio');
-        setSmsCredits(data.credits || 0);
-        console.log('📱 SMS settings loaded:', data);
-      }
+      const key = type === 'welcome' ? '@sms:welcome_message' : '@sms:link_message';
+      await AsyncStorage.setItem(key, value);
+      console.log(`✅ ${type} message template saved`);
     } catch (error) {
-      console.error('Error loading SMS settings:', error);
-    }
-  };
-
-  const updateSMSDeliveryMethod = async (method) => {
-    try {
-      const user = await userService.getUser();
-      const token = await userService.getToken();
-
-      if (!user) {
-        Alert.alert('Error', 'Please log in to update SMS settings');
-        return;
-      }
-
-      const response = await fetch(`${API.API_URL}/api/sms/settings/delivery-method`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': user.userId,
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ method })
-      });
-
-      if (response.ok) {
-        setSmsDeliveryMethod(method);
-        console.log(`✅ SMS delivery method updated to: ${method}`);
-        Alert.alert('Success', `SMS delivery method set to ${method === 'twilio' ? 'Built-in SMS' : 'N8N Webhook'}`);
-      } else {
-        throw new Error('Failed to update delivery method');
-      }
-    } catch (error) {
-      console.error('Error updating SMS delivery method:', error);
-      Alert.alert('Error', 'Failed to update SMS delivery method');
+      console.error(`Error saving ${type} message template:`, error);
     }
   };
 
@@ -350,67 +312,56 @@ const SettingsScreen = () => {
         )}
       </View>
 
-      {/* SMS Delivery Method */}
+      {/* SMS Message Templates */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>📱 SMS Delivery Method</Text>
+          <Text style={styles.sectionTitle}>💬 SMS Message Templates</Text>
         </View>
 
         <View style={styles.webhookCard}>
           <Text style={styles.settingDescription} style={{marginBottom: 16, color: '#94a3b8'}}>
-            Choose how SMS messages are sent to your contacts
+            Customize your SMS messages. Use {'{name}'} to insert the contact's name.
           </Text>
 
-          {/* Twilio Option */}
-          <TouchableOpacity
-            style={[
-              styles.radioOption,
-              smsDeliveryMethod === 'twilio' && styles.radioOptionSelected
-            ]}
-            onPress={() => updateSMSDeliveryMethod('twilio')}
-          >
-            <View style={styles.radioButton}>
-              {smsDeliveryMethod === 'twilio' && <View style={styles.radioButtonInner} />}
-            </View>
-            <View style={styles.radioContent}>
-              <Text style={styles.radioLabel}>Built-in SMS (Twilio)</Text>
-              <Text style={styles.radioDescription}>
-                Send SMS directly from the app
-              </Text>
-            </View>
-          </TouchableOpacity>
+          {/* Welcome Message Template */}
+          <View style={{marginBottom: 20}}>
+            <Text style={styles.webhookLabel}>Welcome Message</Text>
+            <TextInput
+              style={[styles.webhookInput, {height: 80}]}
+              value={welcomeMessage}
+              onChangeText={(text) => {
+                setWelcomeMessage(text);
+                saveMessageTemplate('welcome', text);
+              }}
+              placeholder="Hi {name}! Great meeting you..."
+              placeholderTextColor="#64748b"
+              multiline
+              numberOfLines={3}
+            />
+            <Text style={styles.webhookHint}>
+              Opens your SMS app with this pre-filled message
+            </Text>
+          </View>
 
-          {/* Show credits if Twilio is selected */}
-          {smsDeliveryMethod === 'twilio' && (
-            <View style={styles.creditsCard}>
-              <Text style={styles.creditsLabel}>SMS Credits Remaining:</Text>
-              <Text style={styles.creditsValue}>{smsCredits}</Text>
-              {smsCredits === 0 && (
-                <Text style={styles.creditsWarning}>
-                  ⚠️ You have no credits. Contact support to purchase more.
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* N8N Option */}
-          <TouchableOpacity
-            style={[
-              styles.radioOption,
-              smsDeliveryMethod === 'n8n' && styles.radioOptionSelected
-            ]}
-            onPress={() => updateSMSDeliveryMethod('n8n')}
-          >
-            <View style={styles.radioButton}>
-              {smsDeliveryMethod === 'n8n' && <View style={styles.radioButtonInner} />}
-            </View>
-            <View style={styles.radioContent}>
-              <Text style={styles.radioLabel}>N8N Webhook</Text>
-              <Text style={styles.radioDescription}>
-                Send SMS via your N8N workflow (configure below)
-              </Text>
-            </View>
-          </TouchableOpacity>
+          {/* Link Message Template */}
+          <View>
+            <Text style={styles.webhookLabel}>Link/Invitation Message</Text>
+            <TextInput
+              style={[styles.webhookInput, {height: 80}]}
+              value={linkMessage}
+              onChangeText={(text) => {
+                setLinkMessage(text);
+                saveMessageTemplate('link', text);
+              }}
+              placeholder="Hi {name}! Here's my contact info..."
+              placeholderTextColor="#64748b"
+              multiline
+              numberOfLines={3}
+            />
+            <Text style={styles.webhookHint}>
+              Opens your SMS app with this pre-filled message
+            </Text>
+          </View>
         </View>
       </View>
 
