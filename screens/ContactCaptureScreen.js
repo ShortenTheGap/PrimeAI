@@ -16,6 +16,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import apiClient from '../services/ApiService';
 import API from '../config/api';
 
@@ -1200,16 +1201,19 @@ const ContactCaptureScreen = () => {
 
   const convertRecordingToBase64 = async (uri) => {
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      console.log('🔄 Converting recording to base64:', uri);
+
+      // Read the audio file as base64
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
       });
+
+      // Return as data URI format for N8N
+      const dataUri = `data:audio/m4a;base64,${base64}`;
+      console.log('✅ Recording converted to base64 (length:', dataUri.length, ')');
+      return dataUri;
     } catch (error) {
-      console.error('Error converting recording to base64:', error);
+      console.error('❌ Error converting recording to base64:', error);
       return null;
     }
   };
