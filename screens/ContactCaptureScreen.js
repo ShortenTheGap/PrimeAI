@@ -1231,7 +1231,7 @@ const ContactCaptureScreen = () => {
 
       // Read the audio file as base64
       const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       // Return as data URI format for N8N
