@@ -231,6 +231,7 @@ const SettingsScreen = () => {
       { action: 'welcome', contact: mockContact, audio_base64: mockAudioBase64, hasRecording: true, photoUrl: mockPhotoUrl, hasPhoto: true, timestamp: new Date().toISOString(), test: true },
       { action: 'link', contact: mockContact, audio_base64: mockAudioBase64, hasRecording: true, photoUrl: mockPhotoUrl, hasPhoto: true, timestamp: new Date().toISOString(), test: true },
       { action: 'follow', contact: mockContact, audio_base64: mockAudioBase64, hasRecording: true, photoUrl: mockPhotoUrl, hasPhoto: true, timestamp: new Date().toISOString(), test: true },
+      { action: 'update', contact: mockContact, audio_base64: mockAudioBase64, hasRecording: true, photoUrl: mockPhotoUrl, hasPhoto: true, timestamp: new Date().toISOString(), test: true },
     ];
 
     try {
