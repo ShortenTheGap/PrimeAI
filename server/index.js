@@ -24,9 +24,14 @@ const db = require('./database/db');
 // Routes
 const contactsRouter = require('./routes/contacts');
 const authRouter = require('./routes/auth');
+const adminRouter = require('./routes/admin');
 
 app.use('/api/contacts', contactsRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
+
+// Serve admin dashboard
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
 // User Management Endpoints
 // Register or verify a user by device ID
@@ -79,11 +84,14 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     message: 'PrimeAI API Server',
-    version: '1.0.1',
-    updated: '2025-11-20',
+    version: '1.0.2',
+    updated: '2025-11-28',
     endpoints: {
       health: '/api/health',
-      contacts: '/api/contacts'
+      contacts: '/api/contacts',
+      auth: '/api/auth',
+      admin: '/api/admin',
+      adminDashboard: '/admin'
     }
   });
 });

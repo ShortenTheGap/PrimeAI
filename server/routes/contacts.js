@@ -26,6 +26,19 @@ const authenticateUser = async (req, res, next) => {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.userId = decoded.userId;
+
+        // Check subscription status
+        const user = await db.getUserById(decoded.userId);
+        if (user && user.subscription_status === 'suspended') {
+          return res.status(403).json({
+            error: 'Account suspended',
+            message: 'Your account has been suspended. Please contact support.'
+          });
+        }
+
+        // Update last login
+        await db.updateLastLogin(decoded.userId);
+
         return next();
       } catch (error) {
         return res.status(401).json({ error: 'Invalid or expired token' });
@@ -35,6 +48,15 @@ const authenticateUser = async (req, res, next) => {
     // Fallback to device-based auth (x-user-id header) for backward compatibility
     const userId = req.headers['x-user-id'];
     if (userId) {
+      // Check subscription status for device-based auth too
+      const user = await db.getUserById(userId);
+      if (user && user.subscription_status === 'suspended') {
+        return res.status(403).json({
+          error: 'Account suspended',
+          message: 'Your account has been suspended. Please contact support.'
+        });
+      }
+
       req.userId = userId;
       return next();
     }

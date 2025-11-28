@@ -28,6 +28,11 @@ if (usePostgres) {
           device_name TEXT,
           sms_credits INTEGER DEFAULT 0,
           sms_delivery_method TEXT DEFAULT 'twilio',
+          is_admin BOOLEAN DEFAULT FALSE,
+          subscription_status TEXT DEFAULT 'active',
+          subscription_tier TEXT DEFAULT 'free',
+          subscription_expires_at TIMESTAMP,
+          last_login_at TIMESTAMP,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -116,6 +121,47 @@ if (usePostgres) {
             WHERE table_name = 'users' AND column_name = 'sms_delivery_method'
           ) THEN
             ALTER TABLE users ADD COLUMN sms_delivery_method TEXT DEFAULT 'twilio';
+          END IF;
+        END $$;
+      `);
+
+      // MIGRATION: Add admin and subscription columns to users table
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'is_admin'
+          ) THEN
+            ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+          END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'subscription_status'
+          ) THEN
+            ALTER TABLE users ADD COLUMN subscription_status TEXT DEFAULT 'active';
+          END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'subscription_tier'
+          ) THEN
+            ALTER TABLE users ADD COLUMN subscription_tier TEXT DEFAULT 'free';
+          END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'subscription_expires_at'
+          ) THEN
+            ALTER TABLE users ADD COLUMN subscription_expires_at TIMESTAMP;
+          END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'last_login_at'
+          ) THEN
+            ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP;
           END IF;
         END $$;
       `);
@@ -317,6 +363,59 @@ if (usePostgres) {
         [userId, limit]
       );
       return result.rows;
+    },
+
+    // Admin functions
+    getAllUsers: async () => {
+      const result = await pool.query(`
+        SELECT u.*,
+               COUNT(c.contact_id) as contact_count
+        FROM users u
+        LEFT JOIN contacts c ON u.user_id = c.user_id
+        GROUP BY u.user_id
+        ORDER BY u.created_at DESC
+      `);
+      return result.rows;
+    },
+
+    updateUserSubscription: async (userId, status, tier, expiresAt) => {
+      const result = await pool.query(
+        `UPDATE users
+         SET subscription_status = $1, subscription_tier = $2, subscription_expires_at = $3
+         WHERE user_id = $4
+         RETURNING *`,
+        [status, tier, expiresAt, userId]
+      );
+      return result.rows[0];
+    },
+
+    setUserAdmin: async (userId, isAdmin) => {
+      const result = await pool.query(
+        'UPDATE users SET is_admin = $1 WHERE user_id = $2 RETURNING *',
+        [isAdmin, userId]
+      );
+      return result.rows[0];
+    },
+
+    updateLastLogin: async (userId) => {
+      await pool.query(
+        'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = $1',
+        [userId]
+      );
+    },
+
+    getAdminStats: async () => {
+      const usersResult = await pool.query('SELECT COUNT(*) as total FROM users');
+      const activeResult = await pool.query("SELECT COUNT(*) as total FROM users WHERE subscription_status = 'active'");
+      const contactsResult = await pool.query('SELECT COUNT(*) as total FROM contacts');
+      const recentResult = await pool.query("SELECT COUNT(*) as total FROM users WHERE created_at > NOW() - INTERVAL '7 days'");
+
+      return {
+        totalUsers: parseInt(usersResult.rows[0].total),
+        activeUsers: parseInt(activeResult.rows[0].total),
+        totalContacts: parseInt(contactsResult.rows[0].total),
+        newUsersLast7Days: parseInt(recentResult.rows[0].total)
+      };
     }
   };
 
@@ -336,6 +435,11 @@ if (usePostgres) {
       device_name TEXT,
       sms_credits INTEGER DEFAULT 0,
       sms_delivery_method TEXT DEFAULT 'twilio',
+      is_admin INTEGER DEFAULT 0,
+      subscription_status TEXT DEFAULT 'active',
+      subscription_tier TEXT DEFAULT 'free',
+      subscription_expires_at DATETIME,
+      last_login_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -498,6 +602,54 @@ if (usePostgres) {
     getSMSLogs: async (userId, limit = 50) => {
       const stmt = sqlite.prepare('SELECT * FROM sms_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT ?');
       return stmt.all(userId, limit);
+    },
+
+    // Admin functions
+    getAllUsers: async () => {
+      const stmt = sqlite.prepare(`
+        SELECT u.*,
+               COUNT(c.contact_id) as contact_count
+        FROM users u
+        LEFT JOIN contacts c ON u.user_id = c.user_id
+        GROUP BY u.user_id
+        ORDER BY u.created_at DESC
+      `);
+      return stmt.all();
+    },
+
+    updateUserSubscription: async (userId, status, tier, expiresAt) => {
+      const stmt = sqlite.prepare(`
+        UPDATE users
+        SET subscription_status = ?, subscription_tier = ?, subscription_expires_at = ?
+        WHERE user_id = ?
+      `);
+      stmt.run(status, tier, expiresAt, userId);
+      return db.getUserById(userId);
+    },
+
+    setUserAdmin: async (userId, isAdmin) => {
+      const stmt = sqlite.prepare('UPDATE users SET is_admin = ? WHERE user_id = ?');
+      stmt.run(isAdmin ? 1 : 0, userId);
+      return db.getUserById(userId);
+    },
+
+    updateLastLogin: async (userId) => {
+      const stmt = sqlite.prepare('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = ?');
+      stmt.run(userId);
+    },
+
+    getAdminStats: async () => {
+      const totalUsers = sqlite.prepare('SELECT COUNT(*) as total FROM users').get().total;
+      const activeUsers = sqlite.prepare("SELECT COUNT(*) as total FROM users WHERE subscription_status = 'active'").get().total;
+      const totalContacts = sqlite.prepare('SELECT COUNT(*) as total FROM contacts').get().total;
+      const newUsersLast7Days = sqlite.prepare("SELECT COUNT(*) as total FROM users WHERE created_at > datetime('now', '-7 days')").get().total;
+
+      return {
+        totalUsers,
+        activeUsers,
+        totalContacts,
+        newUsersLast7Days
+      };
     }
   };
 }
