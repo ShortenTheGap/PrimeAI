@@ -21,7 +21,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import * as Calendar from 'expo-calendar';
 import apiClient from '../services/ApiService';
 import API from '../config/api';
@@ -362,73 +361,6 @@ const NewContactWizardScreen = () => {
     }
   };
 
-  // Convert recording to base64 for webhook
-  const convertRecordingToBase64 = async (uri) => {
-    try {
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: 'base64',
-      });
-      return `data:audio/m4a;base64,${base64}`;
-    } catch (error) {
-      console.error('Error converting recording to base64:', error);
-      return null;
-    }
-  };
-
-  // Send update webhook after saving contact
-  const sendUpdateWebhook = async (savedContact, audioUri) => {
-    try {
-      const masterFlowUrl = await AsyncStorage.getItem('@webhook:master_flow');
-      if (!masterFlowUrl) {
-        console.log('No master flow URL configured, skipping update webhook');
-        return;
-      }
-
-      let audioBase64 = null;
-      if (audioUri && audioUri.startsWith('file://')) {
-        audioBase64 = await convertRecordingToBase64(audioUri);
-      }
-
-      // Get server photo URL if available
-      let serverPhotoUrl = savedContact.photo_url || photoUrl;
-      if (serverPhotoUrl && serverPhotoUrl.startsWith('/uploads/')) {
-        serverPhotoUrl = `${API.API_URL}${serverPhotoUrl}`;
-      }
-
-      const payload = {
-        action: 'update',
-        contact: {
-          id: savedContact.contact_id,
-          name: savedContact.name,
-          phone: savedContact.phone,
-          email: savedContact.email,
-        },
-        audio_base64: audioBase64,
-        hasRecording: !!audioUri,
-        photoUrl: serverPhotoUrl,
-        hasPhoto: !!serverPhotoUrl,
-        transcript: savedContact.transcript || null,
-        timestamp: new Date().toISOString(),
-      };
-
-      console.log('📤 Sending update webhook with action:', payload.action);
-
-      const response = await fetch(masterFlowUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        console.log('✅ Update webhook sent successfully');
-      } else {
-        console.error('❌ Update webhook failed:', response.status);
-      }
-    } catch (error) {
-      console.error('Update webhook error:', error);
-    }
-  };
-
   // Save contact
   const saveContact = async (overrideRecordingUri = null) => {
     if (!formData.name && !formData.phone) {
@@ -479,8 +411,8 @@ const NewContactWizardScreen = () => {
 
       const savedContact = response.data;
 
-      // Send update webhook with audio data
-      await sendUpdateWebhook(savedContact, audioUri);
+      // Note: Server handles webhook automatically when audio is uploaded
+      // No need to send client-side webhook
 
       // Update cache
       try {
