@@ -170,8 +170,8 @@ const NewContactWizardScreen = () => {
       setHasRecording(true);
       setRecording(null);
 
-      // Move to saving step
-      saveContact();
+      // Move to saving step - pass URI directly to avoid state timing issue
+      saveContact(uri);
     } catch (error) {
       console.error('Failed to stop recording:', error);
       Alert.alert('Error', 'Failed to stop recording');
@@ -430,11 +430,14 @@ const NewContactWizardScreen = () => {
   };
 
   // Save contact
-  const saveContact = async () => {
+  const saveContact = async (overrideRecordingUri = null) => {
     if (!formData.name && !formData.phone) {
       Alert.alert('Error', 'Please provide at least a name or phone number');
       return;
     }
+
+    // Use override URI if provided (from stopRecording), otherwise use state
+    const audioUri = overrideRecordingUri || recordingUri;
 
     setCurrentStep(STEPS.SAVING);
     setIsSaving(true);
@@ -455,11 +458,11 @@ const NewContactWizardScreen = () => {
       }
 
       // Add recording if exists
-      if (recordingUri && recordingUri.startsWith('file://')) {
-        const uriParts = recordingUri.split('.');
+      if (audioUri && audioUri.startsWith('file://')) {
+        const uriParts = audioUri.split('.');
         const fileType = uriParts[uriParts.length - 1];
         contactFormData.append('audio', {
-          uri: recordingUri,
+          uri: audioUri,
           type: `audio/${fileType}`,
           name: `voice-note.${fileType}`,
         });
@@ -477,7 +480,7 @@ const NewContactWizardScreen = () => {
       const savedContact = response.data;
 
       // Send update webhook with audio data
-      await sendUpdateWebhook(savedContact, recordingUri);
+      await sendUpdateWebhook(savedContact, audioUri);
 
       // Update cache
       try {
