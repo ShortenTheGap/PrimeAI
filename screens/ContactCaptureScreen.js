@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
@@ -1722,13 +1723,14 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
+    paddingTop: 60,
     borderBottomWidth: 1,
     borderBottomColor: '#334155',
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#f1f5f9',
+    color: '#10b981',
     marginBottom: 8,
   },
   autoPopulatedBanner: {
@@ -1745,8 +1747,10 @@ const styles = StyleSheet.create({
   cloudBanner: {
     backgroundColor: 'rgba(16, 185, 129, 0.2)',
     padding: 8,
-    borderRadius: 6,
+    borderRadius: 8,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#10b981',
   },
   cloudBannerText: {
     color: '#10b981',
@@ -1757,7 +1761,9 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#1e293b',
     margin: 16,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   sectionTitle: {
     fontSize: 18,
@@ -1787,7 +1793,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e293b',
     margin: 16,
     marginTop: 0,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   subtitle: {
     fontSize: 14,
@@ -1798,7 +1806,7 @@ const styles = StyleSheet.create({
   recordButton: {
     backgroundColor: '#ef4444',
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
   },
   recordingActive: {
@@ -1867,7 +1875,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e293b',
     margin: 16,
     marginTop: 0,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   photoPreview: {
     width: 120,
@@ -1884,7 +1894,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#6366f1',
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
   },
   photoButtonSecondary: {
@@ -1900,7 +1910,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e293b',
     margin: 16,
     marginTop: 0,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -1912,7 +1924,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   loadingText: {
     marginTop: 12,
@@ -1923,7 +1935,7 @@ const styles = StyleSheet.create({
   actionButton: {
     backgroundColor: '#6366f1',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     marginBottom: 12,
   },
@@ -1946,7 +1958,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#10b981',
     padding: 18,
     margin: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
   },
   saveButtonDisabled: {
