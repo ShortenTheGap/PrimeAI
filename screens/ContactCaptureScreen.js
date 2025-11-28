@@ -1480,7 +1480,7 @@ const ContactCaptureScreen = () => {
       endDate.setHours(11, 0, 0, 0);
 
       const payload = {
-        action: 'create_calendar_event',
+        action: 'follow',
         contact: {
           name: formData.name,
           phone: formData.phone,
@@ -1498,7 +1498,7 @@ const ContactCaptureScreen = () => {
       };
 
       console.log('📅 Sending calendar event webhook:', {
-        action: 'create_calendar_event',
+        action: 'follow',
         contactName: formData.name,
         startTime: startDate.toISOString(),
       });
