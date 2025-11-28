@@ -1566,11 +1566,6 @@ const ContactCaptureScreen = () => {
             </Text>
           </View>
         )}
-        <View style={styles.cloudBanner}>
-          <Text style={styles.cloudBannerText}>
-            ☁️ Saving to: {API.ENV_NAME}
-          </Text>
-        </View>
       </View>
 
       {/* Contact Details - TOP */}
