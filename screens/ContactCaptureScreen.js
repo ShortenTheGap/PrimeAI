@@ -1928,7 +1928,7 @@ const styles = StyleSheet.create({
   },
   photoButton: {
     flex: 1,
-    backgroundColor: '#f97316',
+    backgroundColor: '#E67E22',
     padding: 14,
     borderRadius: 16,
     alignItems: 'center',
@@ -1937,7 +1937,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   photoButtonSecondary: {
-    backgroundColor: '#ea580c',
+    backgroundColor: '#D35400',
   },
   photoButtonText: {
     color: 'white',
@@ -1972,7 +1972,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   actionButton: {
-    backgroundColor: '#e11d48',
+    backgroundColor: '#9B59B6',
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -1986,10 +1986,10 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   actionButtonSecondary: {
-    backgroundColor: '#db2777',
+    backgroundColor: '#8E44AD',
   },
   actionButtonCalendar: {
-    backgroundColor: '#c026d3',
+    backgroundColor: '#E67E22',
   },
   actionButtonText: {
     color: 'white',

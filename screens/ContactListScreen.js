@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#334155',
+    backgroundColor: '#34495E',
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderRadius: 12,
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   reminderBtn: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#E67E22',
   },
   deleteBtn: {
     backgroundColor: '#ef4444',
