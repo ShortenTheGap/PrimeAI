@@ -327,7 +327,6 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
       ...newContact,
       transcript, // Include transcript in response
       photo_url: newContact.photo_url || photo_url, // Explicitly include photo_url
-      webhook_status,
       has_recording
     });
   } catch (error) {
@@ -472,7 +471,6 @@ router.put('/:id', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1
 
     res.json({
       ...updatedContact,
-      webhook_status,
     });
   } catch (error) {
     console.error('Error updating contact:', error);
