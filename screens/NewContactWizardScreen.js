@@ -498,7 +498,7 @@ const NewContactWizardScreen = () => {
         [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('ContactList'),
+            onPress: () => navigation.goBack(),
           },
         ]
       );
