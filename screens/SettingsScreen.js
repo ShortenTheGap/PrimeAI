@@ -217,9 +217,10 @@ const SettingsScreen = () => {
       return;
     }
 
-    Alert.alert('Testing Webhooks', 'Sending 3 test payloads with different action tags...');
+    Alert.alert('Testing Webhooks', 'Sending 4 test payloads with different action tags...');
 
-    const mockAudioBase64 = 'data:audio/mp4;base64,AAAAGGZ0eXBNNEEgAAAAAE00QSBpc29tAAAA';
+    // Use a small placeholder instead of actual audio data to avoid payload size issues
+    const mockAudioBase64 = '[TEST_AUDIO_PLACEHOLDER]';
     const mockPhotoUrl = `${API.API_URL}/uploads/photos/sample-photo.jpg`;
     const mockContact = {
       name: 'John Doe',
@@ -249,10 +250,10 @@ const SettingsScreen = () => {
       const successCount = results.filter(r => r.ok).length;
 
       Alert.alert(
-        'Test Complete',
-        `Sent ${successCount}/${results.length} test webhooks successfully:\n\n` +
-        results.map(r => `• ${r.action}: ${r.ok ? '✅ Success' : '❌ Failed'} (${r.status})`).join('\n') +
-        '\n\nCheck your N8N workflow to see the data.'
+        '4 Test Webhooks Sent',
+        `${successCount}/${results.length} successful:\n\n` +
+        results.map(r => `• ${r.action}: ${r.ok ? '✅' : '❌'}`).join('\n') +
+        '\n\nCheck your workflow automation to see the data.'
       );
     } catch (error) {
       Alert.alert('Error', `Failed to send test webhooks: ${error.message}`);
