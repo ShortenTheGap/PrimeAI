@@ -1434,13 +1434,9 @@ const ContactCaptureScreen = () => {
       const eventTitle = `Follow up: ${formData.name || 'New Contact'}`;
       const eventNotes = `Contact: ${formData.name || 'N/A'}\nPhone: ${formData.phone || 'N/A'}\nEmail: ${formData.email || 'N/A'}`;
 
-      // Set event for tomorrow at 10 AM
+      // Set event for current time, 30 min duration
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() + 1);
-      startDate.setHours(10, 0, 0, 0);
-
-      const endDate = new Date(startDate);
-      endDate.setHours(11, 0, 0, 0);
+      const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
 
       console.log('📅 Creating event:', eventTitle);
       console.log('📅 Start time:', startDate.toISOString());
@@ -1471,13 +1467,9 @@ const ContactCaptureScreen = () => {
         return;
       }
 
-      // Set event for tomorrow at 10 AM
+      // Set event for current time, 30 min duration
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() + 1);
-      startDate.setHours(10, 0, 0, 0);
-
-      const endDate = new Date(startDate);
-      endDate.setHours(11, 0, 0, 0);
+      const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
 
       const payload = {
         action: 'follow',

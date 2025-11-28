@@ -361,13 +361,9 @@ const ContactListScreen = () => {
         const eventTitle = `Follow up: ${contact.name || 'Contact'}`;
         const eventNotes = `Contact: ${contact.name || 'N/A'}\nPhone: ${contact.phone || 'N/A'}\nEmail: ${contact.email || 'N/A'}`;
 
-        // Set event for tomorrow at 10 AM
+        // Set event for current time, 30 min duration
         const startDate = new Date();
-        startDate.setDate(startDate.getDate() + 1);
-        startDate.setHours(10, 0, 0, 0);
-
-        const endDate = new Date(startDate);
-        endDate.setHours(11, 0, 0, 0);
+        const endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
 
         console.log('📅 Creating event:', eventTitle);
 
