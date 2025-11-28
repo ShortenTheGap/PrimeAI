@@ -323,7 +323,7 @@ const ContactListScreen = () => {
         });
 
         if (response.ok) {
-          Alert.alert('✅ Success!', 'Follow-up reminder sent to N8N workflow!');
+          Alert.alert('✅ Success!', 'Follow-up reminder has been scheduled');
         } else {
           Alert.alert('❌ Error', `Webhook failed with status: ${response.status}`);
         }
@@ -381,10 +381,7 @@ const ContactListScreen = () => {
         });
 
         console.log('✅ Native calendar event created! ID:', eventId);
-        Alert.alert(
-          '✅ Success!',
-          `Follow-up event created in your device calendar for tomorrow at 10 AM\n\n"${eventTitle}"`
-        );
+        Alert.alert('✅ Success!', 'Follow-up reminder has been scheduled');
       } catch (error) {
         console.error('❌ Error creating native calendar event:', error);
         Alert.alert('❌ Error', `Failed to create calendar event: ${error.message}`);
