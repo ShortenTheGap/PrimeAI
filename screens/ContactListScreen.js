@@ -457,7 +457,6 @@ const ContactListScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Contact List</Text>
         <View style={styles.cloudBanner}>
           <Text style={styles.cloudBannerText}>
             ☁️ Cloud Synced{lastSyncTime && ` • ${formatSyncTime(lastSyncTime)}`}

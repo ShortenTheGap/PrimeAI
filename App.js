@@ -202,10 +202,15 @@ const App = () => {
         },
         headerStyle: {
           backgroundColor: '#1e293b',
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 0,
         },
-        headerTintColor: '#f1f5f9',
+        headerTintColor: '#10b981',
         headerTitleStyle: {
           fontWeight: 'bold',
+          fontSize: 20,
+          color: '#10b981',
         },
       }}
     >

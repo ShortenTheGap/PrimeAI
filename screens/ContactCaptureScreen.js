@@ -1554,19 +1554,14 @@ const ContactCaptureScreen = () => {
 
   return (
     <ScrollView ref={scrollViewRef} style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          {mode === 'edit' ? 'Edit Contact' : 'Add Contact Context'}
-        </Text>
-        {prefilledContact && (
-          <View style={styles.autoPopulatedBanner}>
-            <Feather name="zap" size={14} color="#fbbf24" />
-            <Text style={styles.bannerText}>
-              Auto-populated from phone contact
-            </Text>
-          </View>
-        )}
-      </View>
+      {prefilledContact && (
+        <View style={styles.autoPopulatedBanner}>
+          <Feather name="zap" size={14} color="#fbbf24" />
+          <Text style={styles.bannerText}>
+            Auto-populated from phone contact
+          </Text>
+        </View>
+      )}
 
       {/* Contact Details - TOP */}
       <View style={styles.detailsSection}>

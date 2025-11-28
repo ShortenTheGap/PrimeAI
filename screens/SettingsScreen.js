@@ -261,11 +261,6 @@ const SettingsScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Settings</Text>
-      </View>
-
       {/* Contact Monitoring Section */}
       <CollapsibleCard
         title="Contact Monitoring"
