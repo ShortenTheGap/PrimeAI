@@ -1561,8 +1561,9 @@ const ContactCaptureScreen = () => {
         </Text>
         {prefilledContact && (
           <View style={styles.autoPopulatedBanner}>
+            <Feather name="zap" size={14} color="#fbbf24" />
             <Text style={styles.bannerText}>
-              ✨ Auto-populated from phone contact
+              Auto-populated from phone contact
             </Text>
           </View>
         )}
@@ -1611,7 +1612,10 @@ const ContactCaptureScreen = () => {
 
       {/* Voice Recording Section - BELOW CONTACT DETAILS */}
       <View style={styles.recordingSection}>
-        <Text style={styles.sectionTitle}>🎙️ Voice Context Capture</Text>
+        <View style={styles.sectionTitleRow}>
+          <Feather name="mic" size={18} color="#f1f5f9" />
+          <Text style={styles.sectionTitle}>Voice Context Capture</Text>
+        </View>
         <Text style={styles.subtitle}>
           Record your thoughts while they're fresh:{'\n'}
           Where did you meet? What did you discuss?
@@ -1621,20 +1625,27 @@ const ContactCaptureScreen = () => {
           style={[styles.recordButton, isRecording && styles.recordingActive]}
           onPress={isRecording ? stopRecording : startRecording}
         >
-          <Text style={styles.recordButtonText}>
-            {isRecording ? '⏹ Stop Recording' : hasRecording ? '🎙️ Re-record' : '🎙️ Press to Record'}
-          </Text>
+          <View style={styles.recordButtonContent}>
+            <Feather name={isRecording ? 'square' : 'mic'} size={18} color="#fff" />
+            <Text style={styles.recordButtonText}>
+              {isRecording ? 'Stop Recording' : hasRecording ? 'Re-record' : 'Press to Record'}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         {hasRecording && (
           <View style={styles.recordingStatus}>
-            <Text style={styles.recordingStatusText}>✅ Recording saved</Text>
+            <Feather name="check-circle" size={14} color="#22c55e" />
+            <Text style={styles.recordingStatusText}>Recording saved</Text>
           </View>
         )}
 
         {transcript && (
           <View style={styles.transcriptSection}>
-            <Text style={styles.transcriptLabel}>📝 Transcript:</Text>
+            <View style={styles.transcriptLabelRow}>
+              <Feather name="file-text" size={14} color="#94a3b8" />
+              <Text style={styles.transcriptLabel}>Transcript:</Text>
+            </View>
             <Text style={styles.transcriptText}>{transcript}</Text>
           </View>
         )}
@@ -1642,7 +1653,10 @@ const ContactCaptureScreen = () => {
 
       {/* Photo Capture Section */}
       <View style={styles.photoSection}>
-        <Text style={styles.sectionTitle}>📷 Photo Capture</Text>
+        <View style={styles.sectionTitleRow}>
+          <Feather name="camera" size={18} color="#f1f5f9" />
+          <Text style={styles.sectionTitle}>Photo Capture</Text>
+        </View>
 
         {photoUrl && (
           <Image source={{ uri: photoUrl }} style={styles.photoPreview} />
@@ -1650,11 +1664,13 @@ const ContactCaptureScreen = () => {
 
         <View style={styles.photoButtons}>
           <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
-            <Text style={styles.photoButtonText}>📷 Take Photo</Text>
+            <Feather name="camera" size={16} color="#fff" />
+            <Text style={styles.photoButtonText}>Take Photo</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.photoButton, styles.photoButtonSecondary]} onPress={pickFromGallery}>
-            <Text style={styles.photoButtonText}>🖼️ Gallery</Text>
+            <Feather name="image" size={16} color="#fff" />
+            <Text style={styles.photoButtonText}>Gallery</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1675,7 +1691,8 @@ const ContactCaptureScreen = () => {
           onPress={() => handleSendMessage('welcome')}
           disabled={isSendingMessage}
         >
-          <Text style={styles.actionButtonText}>📧 Send Welcome Message</Text>
+          <Feather name="message-square" size={16} color="#fff" />
+          <Text style={styles.actionButtonText}>Send Welcome Message</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -1683,14 +1700,16 @@ const ContactCaptureScreen = () => {
           onPress={() => handleSendMessage('link')}
           disabled={isSendingMessage}
         >
-          <Text style={styles.actionButtonText}>🔗 Send Invitation Link</Text>
+          <Feather name="link" size={16} color="#fff" />
+          <Text style={styles.actionButtonText}>Send Invitation Link</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.actionButton, styles.actionButtonCalendar]}
           onPress={handleCreateCalendarEvent}
         >
-          <Text style={styles.actionButtonText}>📅 Create Follow Up Reminder</Text>
+          <Feather name="calendar" size={16} color="#fff" />
+          <Text style={styles.actionButtonText}>Create Follow Up Reminder</Text>
         </TouchableOpacity>
       </View>
 
@@ -1733,6 +1752,9 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   bannerText: {
     color: '#6366f1',
@@ -1765,6 +1787,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#f1f5f9',
     marginBottom: 8,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   formField: {
     marginBottom: 16,
@@ -1812,6 +1839,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  recordButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   recordingStatus: {
     marginTop: 12,
     padding: 12,
@@ -1819,6 +1851,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#10b981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   recordingStatusText: {
     color: '#10b981',
@@ -1857,8 +1893,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#6366f1',
-    marginBottom: 8,
     textTransform: 'uppercase',
+  },
+  transcriptLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
   },
   transcriptText: {
     fontSize: 14,
@@ -1891,6 +1932,9 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 16,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   photoButtonSecondary: {
     backgroundColor: '#8b5cf6',
@@ -1933,6 +1977,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   actionButtonDisabled: {
     backgroundColor: '#64748b',
