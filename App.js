@@ -277,6 +277,14 @@ const App = () => {
           },
         })}
       />
+      <Tab.Screen
+        name="ContactCapture"
+        component={ContactCaptureScreen}
+        options={{
+          title: 'Edit Contact',
+          tabBarButton: () => null,
+        }}
+      />
     </Tab.Navigator>
   );
 
@@ -293,21 +301,6 @@ const App = () => {
         component={NewContactWizardScreen}
         options={{
           presentation: 'modal',
-        }}
-      />
-      <MainStack.Screen
-        name="ContactCapture"
-        component={ContactCaptureScreen}
-        options={{
-          headerShown: true,
-          title: 'Edit Contact',
-          headerStyle: {
-            backgroundColor: '#1e293b',
-          },
-          headerTintColor: '#f1f5f9',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
         }}
       />
     </MainStack.Navigator>
