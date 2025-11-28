@@ -11,6 +11,7 @@ import ContactListScreen from './screens/ContactListScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignupScreen from './screens/SignupScreen';
+import NewContactWizardScreen from './screens/NewContactWizardScreen';
 
 // Import services
 import ContactMonitorService from './services/ContactMonitorService';
@@ -55,9 +56,8 @@ const App = () => {
         console.log('🔄 Navigating to ContactCapture with contact:', JSON.stringify(contactData, null, 2));
         
         setTimeout(() => {
-          navigationRef.current?.navigate('ContactCapture', {
+          navigationRef.current?.navigate('NewContactWizard', {
             contactData: contactData,
-            mode: 'add'
           });
         }, 100);
       }
@@ -80,10 +80,9 @@ const App = () => {
 
           // Always set navigation callback first
           ContactMonitorService.setNavigationCallback((contactData) => {
-            console.log('🔄 Auto-navigating to Contact Capture with:', contactData.name);
-            navigationRef.current?.navigate('ContactCapture', {
+            console.log('🔄 Auto-navigating to New Contact Wizard with:', contactData.name);
+            navigationRef.current?.navigate('NewContactWizard', {
               contactData: contactData,
-              mode: 'add'
             });
           });
 
@@ -132,9 +131,8 @@ const App = () => {
 
     // Set navigation callback
     ContactMonitorService.setNavigationCallback((contactData) => {
-      navigationRef.current?.navigate('ContactCapture', {
+      navigationRef.current?.navigate('NewContactWizard', {
         contactData: contactData,
-        mode: 'add'
       });
     });
 
@@ -167,9 +165,8 @@ const App = () => {
   // Make navigation globally accessible for notifications
   global.navigateToContextCapture = (contactData) => {
     console.log('🌐 Global navigate called with:', contactData);
-    navigationRef.current?.navigate('ContactCapture', {
+    navigationRef.current?.navigate('NewContactWizard', {
       contactData: contactData,
-      mode: 'add'
     });
   };
 
@@ -288,10 +285,11 @@ const App = () => {
           })}
         />
         <Tab.Screen
-          name="ContactCapture"
-          component={ContactCaptureScreen}
+          name="NewContactWizard"
+          component={NewContactWizardScreen}
           options={{
             title: 'Add Contact',
+            headerShown: false,
             tabBarIcon: ({ focused }) => (
               <View style={{
                 width: 40,
@@ -308,9 +306,17 @@ const App = () => {
           listeners={({ navigation }) => ({
             tabPress: (e) => {
               e.preventDefault();
-              navigation.navigate('ContactCapture', { mode: 'add' });
+              navigation.navigate('NewContactWizard', {});
             },
           })}
+        />
+        <Tab.Screen
+          name="ContactCapture"
+          component={ContactCaptureScreen}
+          options={{
+            title: 'Edit Contact',
+            tabBarButton: () => null,
+          }}
         />
       </Tab.Navigator>
   );
