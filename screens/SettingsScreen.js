@@ -464,10 +464,10 @@ const SettingsScreen = () => {
           <View style={styles.radioContent}>
             <View style={styles.radioLabelRow}>
               <Feather name="link" size={16} color="#f1f5f9" />
-              <Text style={styles.radioLabel}>N8N Webhook (Advanced)</Text>
+              <Text style={styles.radioLabel}>Webhook (Advanced)</Text>
             </View>
             <Text style={styles.radioDescription}>
-              Sends event data to your N8N workflow for Google Calendar integration. Requires N8N Master Flow URL configuration.
+              Sends event data to your automation workflow for Calendar integration. This requires Master Webhook URL configuration.
             </Text>
           </View>
         </TouchableOpacity>
