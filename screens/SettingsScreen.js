@@ -22,7 +22,10 @@ const SettingsScreen = () => {
   const [hasPermissions, setHasPermissions] = useState(false);
   const [masterFlowUrl, setMasterFlowUrl] = useState('');
   const [userInfo, setUserInfo] = useState(null);
+  const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [linkMessage, setLinkMessage] = useState('');
   const [smsDeliveryMethod, setSmsDeliveryMethod] = useState('native');
+  const [calendarDeliveryMethod, setCalendarDeliveryMethod] = useState('native');
 
   useEffect(() => {
     checkPermissions();
@@ -42,12 +45,41 @@ const SettingsScreen = () => {
   const loadSettings = async () => {
     try {
       const savedUrl = await AsyncStorage.getItem('@webhook:master_flow');
+      const savedWelcome = await AsyncStorage.getItem('@sms:welcome_message');
+      const savedLink = await AsyncStorage.getItem('@sms:link_message');
       const savedDeliveryMethod = await AsyncStorage.getItem('@sms:delivery_method');
+      const savedCalendarMethod = await AsyncStorage.getItem('@calendar:delivery_method');
 
       if (savedUrl) setMasterFlowUrl(savedUrl);
       if (savedDeliveryMethod) setSmsDeliveryMethod(savedDeliveryMethod);
+      if (savedCalendarMethod) setCalendarDeliveryMethod(savedCalendarMethod);
+
+      // Define default templates
+      const defaultWelcome = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
+      const defaultLink = "Hi {name}! It was so great to meet you. Looking forward to staying in touch! Here's the link to [insert link to your product/service] we discussed. oh... BTW here's the picture I took from us 😎 \n{photo}";
+
+      if (savedWelcome) {
+        setWelcomeMessage(savedWelcome);
+      } else {
+        setWelcomeMessage(defaultWelcome);
+      }
+
+      if (savedLink) {
+        setLinkMessage(savedLink);
+      } else {
+        setLinkMessage(defaultLink);
+      }
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const saveMessageTemplate = async (type, value) => {
+    try {
+      const key = type === 'welcome' ? '@sms:welcome_message' : '@sms:link_message';
+      await AsyncStorage.setItem(key, value);
+    } catch (error) {
+      console.error(`Error saving ${type} message template:`, error);
     }
   };
 
@@ -55,9 +87,17 @@ const SettingsScreen = () => {
     try {
       await AsyncStorage.setItem('@sms:delivery_method', method);
       setSmsDeliveryMethod(method);
-      console.log(`✅ SMS delivery method set to: ${method}`);
     } catch (error) {
       console.error('Error saving SMS delivery method:', error);
+    }
+  };
+
+  const saveCalendarDeliveryMethod = async (method) => {
+    try {
+      await AsyncStorage.setItem('@calendar:delivery_method', method);
+      setCalendarDeliveryMethod(method);
+    } catch (error) {
+      console.error('Error saving calendar delivery method:', error);
     }
   };
 
@@ -261,7 +301,7 @@ const SettingsScreen = () => {
       {/* SMS Delivery Method Section */}
       <View style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
-          <Feather name="grid" size={20} color="#94a3b8" />
+          <Feather name="message-square" size={20} color="#94a3b8" />
           <Text style={styles.sectionTitle}>SMS Delivery Method</Text>
         </View>
 
@@ -282,7 +322,7 @@ const SettingsScreen = () => {
           </View>
           <View style={styles.radioContent}>
             <View style={styles.radioLabelRow}>
-              <Feather name="grid" size={16} color="#f1f5f9" />
+              <Feather name="smartphone" size={16} color="#f1f5f9" />
               <Text style={styles.radioLabel}>Native SMS (Recommended)</Text>
             </View>
             <Text style={styles.radioDescription}>
@@ -309,6 +349,114 @@ const SettingsScreen = () => {
             </View>
             <Text style={styles.radioDescription}>
               Sends data to your N8N workflow for custom SMS delivery. Requires N8N Master Flow URL configuration.
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* SMS Message Templates Section */}
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <Feather name="edit-3" size={20} color="#94a3b8" />
+          <Text style={styles.sectionTitle}>SMS Message Templates</Text>
+        </View>
+
+        <Text style={styles.sectionDescription}>
+          Customize your SMS messages. Use {'{name}'} for contact name and {'{photo}'} for photo link.
+        </Text>
+
+        {/* Welcome Message Template */}
+        <View style={styles.templateSection}>
+          <Text style={styles.templateLabel}>Welcome Message</Text>
+          <TextInput
+            style={styles.templateInput}
+            value={welcomeMessage}
+            onChangeText={(text) => {
+              setWelcomeMessage(text);
+              saveMessageTemplate('welcome', text);
+            }}
+            placeholder="Hi {name}! Great meeting you..."
+            placeholderTextColor="#64748b"
+            multiline
+            numberOfLines={5}
+          />
+          <Text style={styles.templateHint}>
+            Opens your SMS app with this pre-filled message
+          </Text>
+        </View>
+
+        {/* Link Message Template */}
+        <View style={styles.templateSection}>
+          <Text style={styles.templateLabel}>Link/Invitation Message</Text>
+          <TextInput
+            style={styles.templateInput}
+            value={linkMessage}
+            onChangeText={(text) => {
+              setLinkMessage(text);
+              saveMessageTemplate('link', text);
+            }}
+            placeholder="Hi {name}! It was so great to meet you..."
+            placeholderTextColor="#64748b"
+            multiline
+            numberOfLines={5}
+          />
+          <Text style={styles.templateHint}>
+            Opens your SMS app with this pre-filled message
+          </Text>
+        </View>
+      </View>
+
+      {/* Calendar Event Delivery Method Section */}
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <Feather name="calendar" size={20} color="#94a3b8" />
+          <Text style={styles.sectionTitle}>Calendar Event Delivery Method</Text>
+        </View>
+
+        <Text style={styles.sectionDescription}>
+          Choose how you want to create calendar events for contacts
+        </Text>
+
+        {/* Native Calendar Option */}
+        <TouchableOpacity
+          style={[
+            styles.radioOption,
+            calendarDeliveryMethod === 'native' && styles.radioOptionSelected
+          ]}
+          onPress={() => saveCalendarDeliveryMethod('native')}
+        >
+          <View style={[styles.radioButton, calendarDeliveryMethod === 'native' && styles.radioButtonSelected]}>
+            {calendarDeliveryMethod === 'native' && <View style={styles.radioButtonInner} />}
+          </View>
+          <View style={styles.radioContent}>
+            <View style={styles.radioLabelRow}>
+              <Feather name="smartphone" size={16} color="#f1f5f9" />
+              <Text style={styles.radioLabel}>Native Calendar (Recommended)</Text>
+            </View>
+            <Text style={styles.radioDescription}>
+              Creates events directly in your device calendar. Events saved to your personal calendar. Free.
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* N8N Webhook Option */}
+        <TouchableOpacity
+          style={[
+            styles.radioOption,
+            calendarDeliveryMethod === 'n8n' && styles.radioOptionSelected
+          ]}
+          onPress={() => saveCalendarDeliveryMethod('n8n')}
+        >
+          <View style={[styles.radioButton, calendarDeliveryMethod === 'n8n' && styles.radioButtonSelected]}>
+            {calendarDeliveryMethod === 'n8n' && <View style={styles.radioButtonInner} />}
+          </View>
+          <View style={styles.radioContent}>
+            <View style={styles.radioLabelRow}>
+              <Feather name="link" size={16} color="#f1f5f9" />
+              <Text style={styles.radioLabel}>N8N Webhook (Advanced)</Text>
+            </View>
+            <Text style={styles.radioDescription}>
+              Sends event data to your N8N workflow for Google Calendar integration. Requires N8N Master Flow URL configuration.
             </Text>
           </View>
         </TouchableOpacity>
@@ -570,6 +718,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94a3b8',
     lineHeight: 20,
+  },
+  templateSection: {
+    marginBottom: 20,
+  },
+  templateLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f1f5f9',
+    marginBottom: 8,
+  },
+  templateInput: {
+    backgroundColor: '#334155',
+    color: '#f1f5f9',
+    padding: 16,
+    borderRadius: 12,
+    fontSize: 14,
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  templateHint: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+    marginTop: 8,
   },
   webhookInput: {
     backgroundColor: '#334155',
