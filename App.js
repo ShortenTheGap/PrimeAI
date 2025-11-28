@@ -283,6 +283,7 @@ const App = () => {
         options={{
           title: 'Edit Contact',
           tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
         }}
       />
     </Tab.Navigator>
