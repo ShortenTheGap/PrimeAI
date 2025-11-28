@@ -504,13 +504,13 @@ const SettingsScreen = () => {
         {masterFlowUrl && (
           <View style={styles.bulletList}>
             <Text style={styles.bulletItem}>
-              • Test sends 3 payloads with tags: "welcome", "link", "follow"
+              • Test sends payload with tags: "welcome", "link", "follow" and "update"
             </Text>
             <Text style={styles.bulletItem}>
               • Includes mock contact, audio (base64), and photo URL
             </Text>
             <Text style={styles.bulletItem}>
-              • Check your N8N workflow to verify data routing
+              • Check your workflow Webhook node to verify data routing
             </Text>
           </View>
         )}
