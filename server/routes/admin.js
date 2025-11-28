@@ -1,10 +1,12 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const db = require('../database/db');
 
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+const SALT_ROUNDS = 10;
 
 // One-time setup endpoint to create first admin
 // POST /api/admin/setup with { email, setup_key }
@@ -104,6 +106,59 @@ router.get('/users', authenticateAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// POST /api/admin/users - Create a new user
+router.post('/users', authenticateAdmin, async (req, res) => {
+  try {
+    const { email, password, is_admin, subscription_tier } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Check if user already exists
+    const existingUser = await db.getUserByEmail(email.toLowerCase());
+    if (existingUser) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    // Hash password and create user
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    const user = await db.createUserWithPassword(email.toLowerCase(), passwordHash);
+
+    // Set admin status if requested
+    if (is_admin) {
+      await db.setUserAdmin(user.user_id, true);
+    }
+
+    // Set subscription tier if specified
+    if (subscription_tier) {
+      await db.updateUserSubscription(user.user_id, 'active', subscription_tier, null);
+    }
+
+    console.log(`Admin ${req.userId} created new user: ${email}`);
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        user_id: user.user_id,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 

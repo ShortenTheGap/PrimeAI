@@ -410,7 +410,10 @@
       <!-- Users Table -->
       <div class="section-header">
         <h2>Users</h2>
-        <input type="text" class="search-box" id="searchBox" placeholder="Search by email...">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" class="search-box" id="searchBox" placeholder="Search by email...">
+          <button class="btn btn-primary btn-sm" onclick="showAddUserModal()">+ Add User</button>
+        </div>
       </div>
 
       <div class="table-container">
@@ -467,6 +470,40 @@
       <div class="modal-actions">
         <button class="btn btn-primary" onclick="saveUser()">Save Changes</button>
         <button class="btn" style="background:#334155" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add User Modal -->
+  <div class="modal-overlay" id="addUserModal">
+    <div class="modal">
+      <h2>Add New User</h2>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="newUserEmail" placeholder="user@example.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="newUserPassword" placeholder="Min 6 characters">
+      </div>
+      <div class="form-group">
+        <label>Subscription Tier</label>
+        <select id="newUserTier">
+          <option value="free">Free</option>
+          <option value="basic">Basic</option>
+          <option value="pro">Pro</option>
+          <option value="enterprise">Enterprise</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="newUserAdmin" style="width: auto;">
+          Make this user an admin
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="createUser()">Create User</button>
+        <button class="btn" style="background:#334155" onclick="closeAddUserModal()">Cancel</button>
       </div>
     </div>
   </div>
@@ -635,6 +672,64 @@
       document.getElementById('editModal').style.display = 'none';
     }
 
+    function showAddUserModal() {
+      document.getElementById('newUserEmail').value = '';
+      document.getElementById('newUserPassword').value = '';
+      document.getElementById('newUserTier').value = 'free';
+      document.getElementById('newUserAdmin').checked = false;
+      document.getElementById('addUserModal').style.display = 'flex';
+    }
+
+    function closeAddUserModal() {
+      document.getElementById('addUserModal').style.display = 'none';
+    }
+
+    async function createUser() {
+      const email = document.getElementById('newUserEmail').value;
+      const password = document.getElementById('newUserPassword').value;
+      const tier = document.getElementById('newUserTier').value;
+      const isAdmin = document.getElementById('newUserAdmin').checked;
+
+      if (!email || !password) {
+        alert('Email and password are required');
+        return;
+      }
+
+      if (password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/users`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            subscription_tier: tier,
+            is_admin: isAdmin
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to create user');
+        }
+
+        closeAddUserModal();
+        loadUsers();
+        loadStats();
+        alert('User created successfully!');
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
     async function saveUser() {
       const userId = document.getElementById('editUserId').value;
       const status = document.getElementById('editStatus').value;
@@ -750,6 +845,12 @@
     document.getElementById('editModal').addEventListener('click', (e) => {
       if (e.target.id === 'editModal') {
         closeModal();
+      }
+    });
+
+    document.getElementById('addUserModal').addEventListener('click', (e) => {
+      if (e.target.id === 'addUserModal') {
+        closeAddUserModal();
       }
     });
   </script>
