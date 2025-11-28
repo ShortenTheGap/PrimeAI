@@ -219,8 +219,8 @@ const SettingsScreen = () => {
 
     Alert.alert('Testing Webhooks', 'Sending 4 test payloads with different action tags...');
 
-    // Use a small placeholder instead of actual audio data to avoid payload size issues
-    const mockAudioBase64 = '[TEST_AUDIO_PLACEHOLDER]';
+    // Small valid base64 audio header that workflows can recognize
+    const mockAudioBase64 = 'data:audio/m4a;base64,AAAAHGZ0eXBNNEEgAAAAAE00QSBtcDQyaXNvbQ==';
     const mockPhotoUrl = `${API.API_URL}/uploads/photos/sample-photo.jpg`;
     const mockContact = {
       name: 'John Doe',
