@@ -597,6 +597,7 @@
               ? `<button class="btn btn-sm btn-danger" onclick="suspendUser('${user.user_id}')">Suspend</button>`
               : `<button class="btn btn-sm btn-success" onclick="activateUser('${user.user_id}')">Activate</button>`
             }
+            <button class="btn btn-sm" style="background:#64748b" onclick="deleteUser('${user.user_id}', '${(user.email || user.device_name || 'Unknown').replace(/'/g, "\\'")}', ${user.contact_count || 0})">Delete</button>
           </td>
         </tr>
       `).join('');
@@ -698,6 +699,35 @@
 
         if (!response.ok) {
           throw new Error('Failed to activate user');
+        }
+
+        loadUsers();
+        loadStats();
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
+    async function deleteUser(userId, email, contactCount) {
+      const warning = contactCount > 0
+        ? `WARNING: This user has ${contactCount} contact(s) that will also be deleted!\n\n`
+        : '';
+
+      if (!confirm(`${warning}Are you sure you want to permanently delete user "${email}"?\n\nThis cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to delete user');
         }
 
         loadUsers();

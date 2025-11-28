@@ -204,4 +204,35 @@ router.put('/users/:id/admin', authenticateAdmin, async (req, res) => {
   }
 });
 
+// DELETE /api/admin/users/:id - Delete a user
+router.delete('/users/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent deleting yourself
+    if (id === req.userId) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    const user = await db.deleteUser(id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log(`Admin ${req.userId} deleted user ${id} (${user.email})`);
+
+    res.json({
+      message: 'User deleted successfully',
+      user: {
+        user_id: user.user_id,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 module.exports = router;

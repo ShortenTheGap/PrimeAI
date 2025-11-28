@@ -416,6 +416,12 @@ if (usePostgres) {
         totalContacts: parseInt(contactsResult.rows[0].total),
         newUsersLast7Days: parseInt(recentResult.rows[0].total)
       };
+    },
+
+    deleteUser: async (userId) => {
+      // This will cascade delete all contacts for this user
+      const result = await pool.query('DELETE FROM users WHERE user_id = $1 RETURNING *', [userId]);
+      return result.rows[0];
     }
   };
 
@@ -650,6 +656,13 @@ if (usePostgres) {
         totalContacts,
         newUsersLast7Days
       };
+    },
+
+    deleteUser: async (userId) => {
+      const user = db.getUserById(userId);
+      const stmt = sqlite.prepare('DELETE FROM users WHERE user_id = ?');
+      stmt.run(userId);
+      return user;
     }
   };
 }
