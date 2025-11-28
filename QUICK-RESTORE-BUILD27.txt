@@ -1,0 +1,150 @@
+╔════════════════════════════════════════════════════════════════╗
+║          QUICK RESTORE - PrimeAI Build 27                      ║
+╚════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+METHOD 1: FROM TAR BACKUP (FASTEST)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd /home/user
+mv PrimeAI PrimeAI-broken-backup  # Optional: save broken version
+tar -xzf PrimeAI-backup-build27-20251128-100537.tar.gz
+cd PrimeAI
+npm install
+npx expo start
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+METHOD 2: FROM GIT TAG (LOCAL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd /home/user/PrimeAI
+git stash  # or: git reset --hard HEAD
+git checkout backup-build-27
+git checkout -b restored-build27
+npm install
+npx expo start
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+METHOD 3: FROM COMMIT HASH (MOST RELIABLE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd /home/user/PrimeAI
+git fetch origin
+git stash  # or: git reset --hard HEAD
+git checkout b323ac161d1e35ba9c1e8941cce0c94a4c65b6b7
+git checkout -b restored-build27
+npm install
+npx expo start
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+METHOD 4: FROM BRANCH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd /home/user/PrimeAI
+git fetch origin claude/continue-context-work-0131o9mZMQc8qicA5VoYkadw
+git checkout claude/continue-context-work-0131o9mZMQc8qicA5VoYkadw
+git reset --hard b323ac1  # Reset to Build 27 commit
+npm install
+npx expo start
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DEPLOY BACKEND TO RAILWAY (REQUIRED!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Create PR to merge to main for Railway auto-deploy
+gh pr create --base main --head claude/continue-context-work-0131o9mZMQc8qicA5VoYkadw \
+  --title "Build 27: Follow Up Reminder button" \
+  --body "See BUILD-26-DEPLOYMENT.md for deployment details"
+
+# Or merge via GitHub UI and Railway will auto-deploy
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RAILWAY ENVIRONMENT VARIABLES (REQUIRED!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST be set in Railway Dashboard for app to work:
+
+OPENAI_API_KEY=sk-proj-waZXoh...   # Your OpenAI API key (REQUIRED!)
+JWT_SECRET=your-secret-key          # Already configured
+DATABASE_URL=postgresql://...       # Already configured
+
+OPTIONAL (for power users):
+N8N_WEBHOOK_URL=https://...         # Optional custom integrations
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VERIFY BUILD 27
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+git log --oneline -3
+# Should show:
+# b323ac1 Update button label to 'Create Follow Up Reminder'
+# 7ac9508 Change Calendar button color to amber...
+# a267534 Fix stuck unsaved changes warning...
+
+grep "Follow Up Reminder" screens/ContactCaptureScreen.js
+# Should show: 📅 Create Follow Up Reminder
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Clear cache:          npx expo start -c
+Reinstall packages:   rm -rf node_modules && npm install
+Check Railway logs:   railway.app/dashboard → PrimeAI → View Logs
+Full guide:           cat /home/user/BUILD-26-DEPLOYMENT.md
+
+If git checkout fails:
+  git fetch origin --all
+  git checkout -f <branch-or-commit>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BUILD 27 INFO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Backup:     /home/user/PrimeAI-backup-build27-20251128-100537.tar.gz
+Git Tag:    backup-build-27 (local)
+Commit:     b323ac161d1e35ba9c1e8941cce0c94a4c65b6b7
+Branch:     claude/continue-context-work-0131o9mZMQc8qicA5VoYkadw
+Date:       November 28, 2025
+
+Features:   ✅ Auth (login/signup)
+            ✅ Contact monitoring
+            ✅ Instant OpenAI Whisper transcription
+            ✅ N8N optional for power users
+            ✅ Fixed save button bug
+            ✅ Fixed stuck unsaved changes warning
+            ✅ Fixed 502 errors (cache update)
+            ✅ Fixed Base64 encoding for audio
+            ✅ Amber "Create Follow Up Reminder" button (NEW!)
+
+Changes from Build 26:
+  • Fixed stuck unsaved changes warning (multiple fixes)
+  • Fixed 502 errors by updating cache instead of invalidating
+  • Fixed Base64 encoding error for audio recordings
+  • Improved UX with better feedback and streamlined messages
+  • Fixed contact deletion to update UI immediately
+  • Calendar delivery method toggle fixes
+  • Changed Calendar button to amber color
+  • Renamed button to "Create Follow Up Reminder"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPARISON: BUILD 26 vs BUILD 27
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BUILD 26:
+  • Purple "Create Calendar Event" button
+  • Stuck unsaved changes warning bug
+  • 502 errors on cache invalidation
+  • Base64 audio encoding issues
+
+BUILD 27:
+  • Amber "Create Follow Up Reminder" button
+  • Fixed unsaved changes warning
+  • Stable cache updates (no 502s)
+  • Fixed audio encoding
+  • Better overall UX
+
+IMPACT: 🐛 Bug fixes, 🎨 UI improvements, ⚡ Better stability
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
