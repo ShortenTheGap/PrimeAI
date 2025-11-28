@@ -20,6 +20,7 @@ import userService from './services/UserService';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
+const MainStack = createStackNavigator();
 
 const App = () => {
   const navigationRef = React.useRef(null);
@@ -186,19 +187,120 @@ const App = () => {
     </Stack.Navigator>
   );
 
-  // Main App Tab Navigator
-  const MainApp = () => (
+  // Tab Navigator (3 tabs only)
+  const TabNavigator = () => (
     <Tab.Navigator
-        initialRouteName="ContactList"
-        screenOptions={{
-          tabBarShowLabel: false,
-          tabBarStyle: {
-            backgroundColor: '#1e293b',
-            borderTopColor: '#334155',
-            height: Platform.OS === 'ios' ? 88 : 70,
-            paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-            paddingTop: 12,
+      initialRouteName="ContactList"
+      screenOptions={{
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          backgroundColor: '#1e293b',
+          borderTopColor: '#334155',
+          height: Platform.OS === 'ios' ? 88 : 70,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+          paddingTop: 12,
+        },
+        headerStyle: {
+          backgroundColor: '#1e293b',
+        },
+        headerTintColor: '#f1f5f9',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 24 }}>⚙️</Text>
+          ),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
+              e.preventDefault();
+              global.showUnsavedChangesAlert(() => {
+                global.hasUnsavedContactChanges = false;
+                global.showUnsavedChangesAlert = null;
+                navigation.navigate('Settings');
+              });
+            }
           },
+        })}
+      />
+      <Tab.Screen
+        name="ContactList"
+        component={ContactListScreen}
+        options={{
+          title: 'Contacts',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 24 }}>👥</Text>
+          ),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
+              e.preventDefault();
+              global.showUnsavedChangesAlert(() => {
+                global.hasUnsavedContactChanges = false;
+                global.showUnsavedChangesAlert = null;
+                navigation.navigate('ContactList');
+              });
+            }
+          },
+        })}
+      />
+      <Tab.Screen
+        name="AddContact"
+        component={View}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: '#10b981',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+              <Text style={{ fontSize: 24, color: 'white', fontWeight: 'bold' }}>+</Text>
+            </View>
+          ),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('NewContactWizard', {});
+          },
+        })}
+      />
+    </Tab.Navigator>
+  );
+
+  // Main App with Stack wrapping Tabs
+  const MainApp = () => (
+    <MainStack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <MainStack.Screen name="Tabs" component={TabNavigator} />
+      <MainStack.Screen
+        name="NewContactWizard"
+        component={NewContactWizardScreen}
+        options={{
+          presentation: 'modal',
+        }}
+      />
+      <MainStack.Screen
+        name="ContactCapture"
+        component={ContactCaptureScreen}
+        options={{
+          headerShown: true,
+          title: 'Edit Contact',
           headerStyle: {
             backgroundColor: '#1e293b',
           },
@@ -207,118 +309,8 @@ const App = () => {
             fontWeight: 'bold',
           },
         }}
-      >
-        <Tab.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{
-            title: 'Settings',
-            tabBarIcon: ({ focused }) => (
-              <Text style={{ fontSize: 24 }}>⚙️</Text>
-            ),
-          }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => {
-              console.log('⚙️ Settings tab pressed, checking for unsaved changes...');
-              console.log('📊 Global state:', {
-                hasUnsavedContactChanges: global.hasUnsavedContactChanges,
-                hasAlertFunction: !!global.showUnsavedChangesAlert,
-              });
-
-              if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
-                console.log('⛔ Unsaved changes detected - calling alert function');
-                e.preventDefault();
-                global.showUnsavedChangesAlert(() => {
-                  console.log('✅ User confirmed - navigating to Settings');
-                  global.hasUnsavedContactChanges = false;
-                  global.showUnsavedChangesAlert = null;
-                  navigation.navigate('Settings');
-                });
-              } else {
-                console.log('✅ No unsaved changes - allowing navigation to Settings');
-                if (!global.hasUnsavedContactChanges) {
-                  console.log('  - Reason: hasUnsavedContactChanges is false');
-                }
-                if (!global.showUnsavedChangesAlert) {
-                  console.log('  - Reason: showUnsavedChangesAlert function not set');
-                }
-              }
-            },
-          })}
-        />
-        <Tab.Screen
-          name="ContactList"
-          component={ContactListScreen}
-          options={{
-            title: 'Contacts',
-            tabBarIcon: ({ focused }) => (
-              <Text style={{ fontSize: 24 }}>👥</Text>
-            ),
-          }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => {
-              console.log('👥 ContactList tab pressed, checking for unsaved changes...');
-              console.log('📊 Global state:', {
-                hasUnsavedContactChanges: global.hasUnsavedContactChanges,
-                hasAlertFunction: !!global.showUnsavedChangesAlert,
-              });
-
-              if (global.hasUnsavedContactChanges && global.showUnsavedChangesAlert) {
-                console.log('⛔ Unsaved changes detected - calling alert function');
-                e.preventDefault();
-                global.showUnsavedChangesAlert(() => {
-                  console.log('✅ User confirmed - navigating to ContactList');
-                  global.hasUnsavedContactChanges = false;
-                  global.showUnsavedChangesAlert = null;
-                  navigation.navigate('ContactList');
-                });
-              } else {
-                console.log('✅ No unsaved changes - allowing navigation to ContactList');
-                if (!global.hasUnsavedContactChanges) {
-                  console.log('  - Reason: hasUnsavedContactChanges is false');
-                }
-                if (!global.showUnsavedChangesAlert) {
-                  console.log('  - Reason: showUnsavedChangesAlert function not set');
-                }
-              }
-            },
-          })}
-        />
-        <Tab.Screen
-          name="NewContactWizard"
-          component={NewContactWizardScreen}
-          options={{
-            title: 'Add Contact',
-            headerShown: false,
-            tabBarIcon: ({ focused }) => (
-              <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: '#10b981',
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
-                <Text style={{ fontSize: 24, color: 'white', fontWeight: 'bold' }}>+</Text>
-              </View>
-            ),
-          }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => {
-              e.preventDefault();
-              navigation.navigate('NewContactWizard', {});
-            },
-          })}
-        />
-        <Tab.Screen
-          name="ContactCapture"
-          component={ContactCaptureScreen}
-          options={{
-            title: 'Edit Contact',
-            tabBarButton: () => null,
-          }}
-        />
-      </Tab.Navigator>
+      />
+    </MainStack.Navigator>
   );
 
   // Show loading screen while initializing

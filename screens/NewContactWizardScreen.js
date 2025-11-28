@@ -11,6 +11,10 @@ import {
   Animated,
   Linking,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -229,6 +233,7 @@ const NewContactWizardScreen = () => {
     const supported = await Linking.canOpenURL(smsUrl);
     if (supported) {
       await Linking.openURL(smsUrl);
+      Alert.alert('Message Ready', 'Your message app has been opened with the pre-filled message.');
     } else {
       Alert.alert('Error', 'SMS is not supported on this device');
     }
@@ -260,7 +265,9 @@ const NewContactWizardScreen = () => {
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) {
+    if (response.ok) {
+      Alert.alert('Message Sent', 'Your message has been sent successfully!');
+    } else {
       throw new Error(`Webhook failed with status: ${response.status}`);
     }
   };
@@ -355,6 +362,73 @@ const NewContactWizardScreen = () => {
     }
   };
 
+  // Convert recording to base64 for webhook
+  const convertRecordingToBase64 = async (uri) => {
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64',
+      });
+      return `data:audio/m4a;base64,${base64}`;
+    } catch (error) {
+      console.error('Error converting recording to base64:', error);
+      return null;
+    }
+  };
+
+  // Send update webhook after saving contact
+  const sendUpdateWebhook = async (savedContact, audioUri) => {
+    try {
+      const masterFlowUrl = await AsyncStorage.getItem('@webhook:master_flow');
+      if (!masterFlowUrl) {
+        console.log('No master flow URL configured, skipping update webhook');
+        return;
+      }
+
+      let audioBase64 = null;
+      if (audioUri && audioUri.startsWith('file://')) {
+        audioBase64 = await convertRecordingToBase64(audioUri);
+      }
+
+      // Get server photo URL if available
+      let serverPhotoUrl = savedContact.photo_url || photoUrl;
+      if (serverPhotoUrl && serverPhotoUrl.startsWith('/uploads/')) {
+        serverPhotoUrl = `${API.API_URL}${serverPhotoUrl}`;
+      }
+
+      const payload = {
+        action: 'update',
+        contact: {
+          id: savedContact.contact_id,
+          name: savedContact.name,
+          phone: savedContact.phone,
+          email: savedContact.email,
+        },
+        audio_base64: audioBase64,
+        hasRecording: !!audioUri,
+        photoUrl: serverPhotoUrl,
+        hasPhoto: !!serverPhotoUrl,
+        transcript: savedContact.transcript || null,
+        timestamp: new Date().toISOString(),
+      };
+
+      console.log('📤 Sending update webhook with action:', payload.action);
+
+      const response = await fetch(masterFlowUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        console.log('✅ Update webhook sent successfully');
+      } else {
+        console.error('❌ Update webhook failed:', response.status);
+      }
+    } catch (error) {
+      console.error('Update webhook error:', error);
+    }
+  };
+
   // Save contact
   const saveContact = async () => {
     if (!formData.name && !formData.phone) {
@@ -401,6 +475,9 @@ const NewContactWizardScreen = () => {
       );
 
       const savedContact = response.data;
+
+      // Send update webhook with audio data
+      await sendUpdateWebhook(savedContact, recordingUri);
 
       // Update cache
       try {
@@ -731,37 +808,48 @@ const NewContactWizardScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={() => {
-            Alert.alert(
-              'Cancel',
-              'Are you sure you want to cancel? Your progress will be lost.',
-              [
-                { text: 'Keep Going', style: 'cancel' },
-                {
-                  text: 'Cancel',
-                  style: 'destructive',
-                  onPress: () => navigation.goBack(),
-                },
-              ]
-            );
-          }}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => {
+              Alert.alert(
+                'Cancel',
+                'Are you sure you want to cancel? Your progress will be lost.',
+                [
+                  { text: 'Keep Going', style: 'cancel' },
+                  {
+                    text: 'Cancel',
+                    style: 'destructive',
+                    onPress: () => navigation.goBack(),
+                  },
+                ]
+              );
+            }}
+          >
+            <Feather name="x" size={24} color="#94a3b8" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>New Contact</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        {renderStepIndicator()}
+
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <Feather name="x" size={24} color="#94a3b8" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Contact</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {renderStepIndicator()}
-
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        {renderStep()}
-      </Animated.View>
-    </View>
+          <Animated.View style={{ opacity: fadeAnim }}>
+            {renderStep()}
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -813,7 +901,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   stepCard: {
     backgroundColor: '#1e293b',
