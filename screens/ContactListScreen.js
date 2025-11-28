@@ -456,8 +456,7 @@ const ContactListScreen = () => {
         <Text style={styles.title}>Contact List</Text>
         <View style={styles.cloudBanner}>
           <Text style={styles.cloudBannerText}>
-            ☁️ {API.ENV_NAME}
-            {lastSyncTime && ` • Last sync: ${formatSyncTime(lastSyncTime)}`}
+            ☁️ Cloud Synced{lastSyncTime && ` • ${formatSyncTime(lastSyncTime)}`}
           </Text>
         </View>
         <TextInput
