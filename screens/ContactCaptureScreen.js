@@ -13,7 +13,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -132,13 +132,12 @@ const ContactCaptureScreen = () => {
       }
     }, [route.params]);
 
-  // Scroll to top when adding a new contact
+  // Scroll to top when opening the screen (add or edit)
   useEffect(() => {
-    const currentMode = route.params?.mode || 'add';
-    if (currentMode === 'add' && scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: 0, animated: false });
     }
-  }, [route.params?.mode]);
+  }, [route.params?.mode, route.params?.contact]);
 
   // Track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
