@@ -6,6 +6,41 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 
+// One-time setup endpoint to create first admin
+// POST /api/admin/setup with { email, setup_key }
+// Set ADMIN_SETUP_KEY in your environment variables
+router.post('/setup', async (req, res) => {
+  try {
+    const { email, setup_key } = req.body;
+    const expectedKey = process.env.ADMIN_SETUP_KEY;
+
+    if (!expectedKey) {
+      return res.status(403).json({ error: 'Setup not enabled. Set ADMIN_SETUP_KEY environment variable.' });
+    }
+
+    if (setup_key !== expectedKey) {
+      return res.status(403).json({ error: 'Invalid setup key' });
+    }
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await db.getUserByEmail(email.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: 'User not found. Register in the app first.' });
+    }
+
+    await db.setUserAdmin(user.user_id, true);
+    console.log(`Admin setup: ${email} is now an admin`);
+
+    res.json({ message: `${email} is now an admin. You can now login at /admin` });
+  } catch (error) {
+    console.error('Admin setup error:', error);
+    res.status(500).json({ error: 'Setup failed' });
+  }
+});
+
 // Admin authentication middleware
 const authenticateAdmin = async (req, res, next) => {
   try {
