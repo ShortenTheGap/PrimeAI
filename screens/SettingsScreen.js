@@ -498,7 +498,7 @@ const SettingsScreen = () => {
           onPress={testMasterWebhook}
           disabled={!masterFlowUrl}
         >
-          <Text style={styles.testButtonText}>🧪 Test Webhook (Send 3 Mock Payloads)</Text>
+          <Text style={styles.testButtonText}>Test Webhook with Mock Payload</Text>
         </TouchableOpacity>
 
         {masterFlowUrl && (
