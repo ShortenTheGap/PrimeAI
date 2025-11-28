@@ -823,7 +823,7 @@ const styles = StyleSheet.create({
   },
   bulletItem: {
     fontSize: 14,
-    color: '#6366f1',
+    color: '#f1f5f9',
     marginBottom: 8,
     lineHeight: 20,
   },
