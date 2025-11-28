@@ -490,7 +490,7 @@ const SettingsScreen = () => {
           spellCheck={false}
         />
         <Text style={styles.webhookHint}>
-          All actions (welcome, link, follow) will be sent to this single URL with action tags
+          All actions (welcome, link, follow and update) will be sent to this single URL with action tags
         </Text>
 
         <TouchableOpacity
