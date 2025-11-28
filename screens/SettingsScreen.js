@@ -551,7 +551,7 @@ const SettingsScreen = () => {
         style={{ marginBottom: 40 }}
       >
         <Text style={styles.aboutText}>
-          Context CRM monitors your phone's contact list and prompts you to capture context immediately after adding someone new.
+          cnnected monitors your phone's contact list and prompts you to capture context immediately after meeting someone new.
         </Text>
         <Text style={styles.aboutText}>
           This ensures you never forget important details about your networking connections.
