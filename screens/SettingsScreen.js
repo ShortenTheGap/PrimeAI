@@ -17,6 +17,30 @@ import BackgroundTaskService from '../services/BackgroundTaskService';
 import userService from '../services/UserService';
 import API from '../config/api';
 
+// Collapsible Card Component
+const CollapsibleCard = ({ title, icon, isExpanded, onToggle, children, style }) => {
+  return (
+    <View style={[styles.sectionCard, style]}>
+      <TouchableOpacity style={styles.collapsibleHeader} onPress={onToggle}>
+        <View style={styles.sectionHeaderLeft}>
+          <Feather name={icon} size={20} color="#94a3b8" />
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+        <Feather
+          name={isExpanded ? "chevron-down" : "chevron-right"}
+          size={24}
+          color="#94a3b8"
+        />
+      </TouchableOpacity>
+      {isExpanded && (
+        <View style={styles.collapsibleContent}>
+          {children}
+        </View>
+      )}
+    </View>
+  );
+};
+
 const SettingsScreen = () => {
   const [monitoringEnabled, setMonitoringEnabled] = useState(false);
   const [hasPermissions, setHasPermissions] = useState(false);
@@ -26,6 +50,24 @@ const SettingsScreen = () => {
   const [linkMessage, setLinkMessage] = useState('');
   const [smsDeliveryMethod, setSmsDeliveryMethod] = useState('native');
   const [calendarDeliveryMethod, setCalendarDeliveryMethod] = useState('native');
+
+  // Collapsed state for each section
+  const [expandedSections, setExpandedSections] = useState({
+    contactMonitoring: true,
+    smsDelivery: false,
+    smsTemplates: false,
+    calendarDelivery: false,
+    webhook: false,
+    account: false,
+    about: false,
+  });
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   useEffect(() => {
     checkPermissions();
@@ -54,7 +96,6 @@ const SettingsScreen = () => {
       if (savedDeliveryMethod) setSmsDeliveryMethod(savedDeliveryMethod);
       if (savedCalendarMethod) setCalendarDeliveryMethod(savedCalendarMethod);
 
-      // Define default templates
       const defaultWelcome = "Hi {name}!  It was so great to meet you. Looking forward to staying in touch! Here's my booking link: [insert your booking link] \noh... BTW here's the picture I took from us 😎 {photo}";
       const defaultLink = "Hi {name}! It was so great to meet you. Looking forward to staying in touch! Here's the link to [insert link to your product/service] we discussed. oh... BTW here's the picture I took from us 😎 \n{photo}";
 
@@ -224,38 +265,13 @@ const SettingsScreen = () => {
         <Text style={styles.title}>Settings</Text>
       </View>
 
-      {/* Account Section */}
-      {userInfo && userInfo.email && (
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Feather name="user" size={20} color="#94a3b8" />
-            <Text style={styles.sectionTitle}>Account</Text>
-          </View>
-
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>EMAIL:</Text>
-            <Text style={styles.infoValue}>{userInfo.email}</Text>
-          </View>
-
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>USER ID:</Text>
-            <Text style={styles.infoValue}>{userInfo.userId}</Text>
-          </View>
-
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Feather name="log-out" size={20} color="#ef4444" />
-            <Text style={styles.logoutButtonText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* Contact Monitoring Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Feather name="grid" size={20} color="#94a3b8" />
-          <Text style={styles.sectionTitle}>Contact Monitoring</Text>
-        </View>
-
+      <CollapsibleCard
+        title="Contact Monitoring"
+        icon="grid"
+        isExpanded={expandedSections.contactMonitoring}
+        onToggle={() => toggleSection('contactMonitoring')}
+      >
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
             <Text style={styles.settingLabel}>Auto-Detect New Contacts</Text>
@@ -296,20 +312,19 @@ const SettingsScreen = () => {
             </View>
           </View>
         )}
-      </View>
+      </CollapsibleCard>
 
       {/* SMS Delivery Method Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Feather name="message-square" size={20} color="#94a3b8" />
-          <Text style={styles.sectionTitle}>SMS Delivery Method</Text>
-        </View>
-
+      <CollapsibleCard
+        title="SMS Delivery Method"
+        icon="message-square"
+        isExpanded={expandedSections.smsDelivery}
+        onToggle={() => toggleSection('smsDelivery')}
+      >
         <Text style={styles.sectionDescription}>
           Choose how you want to send SMS messages to your contacts
         </Text>
 
-        {/* Native SMS Option */}
         <TouchableOpacity
           style={[
             styles.radioOption,
@@ -331,7 +346,6 @@ const SettingsScreen = () => {
           </View>
         </TouchableOpacity>
 
-        {/* N8N Webhook Option */}
         <TouchableOpacity
           style={[
             styles.radioOption,
@@ -352,20 +366,19 @@ const SettingsScreen = () => {
             </Text>
           </View>
         </TouchableOpacity>
-      </View>
+      </CollapsibleCard>
 
       {/* SMS Message Templates Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Feather name="edit-3" size={20} color="#94a3b8" />
-          <Text style={styles.sectionTitle}>SMS Message Templates</Text>
-        </View>
-
+      <CollapsibleCard
+        title="SMS Message Templates"
+        icon="edit-3"
+        isExpanded={expandedSections.smsTemplates}
+        onToggle={() => toggleSection('smsTemplates')}
+      >
         <Text style={styles.sectionDescription}>
           Customize your SMS messages. Use {'{name}'} for contact name and {'{photo}'} for photo link.
         </Text>
 
-        {/* Welcome Message Template */}
         <View style={styles.templateSection}>
           <Text style={styles.templateLabel}>Welcome Message</Text>
           <TextInput
@@ -385,7 +398,6 @@ const SettingsScreen = () => {
           </Text>
         </View>
 
-        {/* Link Message Template */}
         <View style={styles.templateSection}>
           <Text style={styles.templateLabel}>Link/Invitation Message</Text>
           <TextInput
@@ -404,20 +416,19 @@ const SettingsScreen = () => {
             Opens your SMS app with this pre-filled message
           </Text>
         </View>
-      </View>
+      </CollapsibleCard>
 
       {/* Calendar Event Delivery Method Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Feather name="calendar" size={20} color="#94a3b8" />
-          <Text style={styles.sectionTitle}>Calendar Event Delivery Method</Text>
-        </View>
-
+      <CollapsibleCard
+        title="Calendar Event Delivery Method"
+        icon="calendar"
+        isExpanded={expandedSections.calendarDelivery}
+        onToggle={() => toggleSection('calendarDelivery')}
+      >
         <Text style={styles.sectionDescription}>
           Choose how you want to create calendar events for contacts
         </Text>
 
-        {/* Native Calendar Option */}
         <TouchableOpacity
           style={[
             styles.radioOption,
@@ -439,7 +450,6 @@ const SettingsScreen = () => {
           </View>
         </TouchableOpacity>
 
-        {/* N8N Webhook Option */}
         <TouchableOpacity
           style={[
             styles.radioOption,
@@ -460,15 +470,15 @@ const SettingsScreen = () => {
             </Text>
           </View>
         </TouchableOpacity>
-      </View>
+      </CollapsibleCard>
 
       {/* Master Webhook URL Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Feather name="link" size={20} color="#94a3b8" />
-          <Text style={styles.sectionTitle}>Master Webhook URL</Text>
-        </View>
-
+      <CollapsibleCard
+        title="Master Webhook URL"
+        icon="link"
+        isExpanded={expandedSections.webhook}
+        onToggle={() => toggleSection('webhook')}
+      >
         <TextInput
           style={styles.webhookInput}
           value={masterFlowUrl}
@@ -504,22 +514,48 @@ const SettingsScreen = () => {
             </Text>
           </View>
         )}
-      </View>
+      </CollapsibleCard>
+
+      {/* Account Section - Moved here between Webhook and About */}
+      {userInfo && userInfo.email && (
+        <CollapsibleCard
+          title="Account"
+          icon="user"
+          isExpanded={expandedSections.account}
+          onToggle={() => toggleSection('account')}
+        >
+          <View style={styles.infoCard}>
+            <Text style={styles.infoLabel}>EMAIL:</Text>
+            <Text style={styles.infoValue}>{userInfo.email}</Text>
+          </View>
+
+          <View style={styles.infoCard}>
+            <Text style={styles.infoLabel}>USER ID:</Text>
+            <Text style={styles.infoValue}>{userInfo.userId}</Text>
+          </View>
+
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Feather name="log-out" size={20} color="#ef4444" />
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+        </CollapsibleCard>
+      )}
 
       {/* About Section */}
-      <View style={[styles.sectionCard, { marginBottom: 40 }]}>
-        <View style={styles.sectionHeader}>
-          <Feather name="info" size={20} color="#94a3b8" />
-          <Text style={styles.sectionTitle}>About</Text>
-        </View>
-
+      <CollapsibleCard
+        title="About"
+        icon="info"
+        isExpanded={expandedSections.about}
+        onToggle={() => toggleSection('about')}
+        style={{ marginBottom: 40 }}
+      >
         <Text style={styles.aboutText}>
           Context CRM monitors your phone's contact list and prompts you to capture context immediately after adding someone new.
         </Text>
         <Text style={styles.aboutText}>
           This ensures you never forget important details about your networking connections.
         </Text>
-      </View>
+      </CollapsibleCard>
     </ScrollView>
   );
 };
@@ -547,16 +583,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
-  sectionHeader: {
+  collapsibleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#f1f5f9',
     marginLeft: 10,
+  },
+  collapsibleContent: {
+    marginTop: 16,
   },
   sectionDescription: {
     fontSize: 14,
