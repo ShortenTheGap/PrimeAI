@@ -14,6 +14,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Calendar from 'expo-calendar';
+import { Feather } from '@expo/vector-icons';
 import apiClient from '../services/ApiService';
 import API from '../config/api';
 
@@ -430,21 +431,24 @@ const ContactListScreen = () => {
             style={styles.actionBtn}
             onPress={() => navigation.navigate('ContactCapture', { mode: 'edit', contact: item })}
           >
-            <Text style={styles.actionBtnText}>✏️ Edit</Text>
+            <Feather name="edit-2" size={14} color="white" />
+            <Text style={styles.actionBtnText}>Edit</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.actionBtn, styles.reminderBtn]}
             onPress={() => sendFollowUpReminder(item)}
           >
-            <Text style={styles.actionBtnText}>🔔 Follow-up</Text>
+            <Feather name="bell" size={14} color="white" />
+            <Text style={styles.actionBtnText}>Follow-up</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.actionBtn, styles.deleteBtn]}
             onPress={() => deleteContact(item.contact_id || item.id)}
           >
-            <Text style={styles.actionBtnText}>🗑️ Delete</Text>
+            <Feather name="trash-2" size={14} color="white" />
+            <Text style={styles.actionBtnText}>Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -611,11 +615,15 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: '#334155',
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     borderRadius: 12,
     marginHorizontal: 4,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
   reminderBtn: {
     backgroundColor: '#f59e0b',
@@ -625,7 +633,7 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   loadingContainer: {
