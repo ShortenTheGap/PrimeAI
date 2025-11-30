@@ -246,6 +246,11 @@ const NewContactWizardScreen = () => {
       return;
     }
 
+    // Only include photo URL if it's a hosted URL (not local file://)
+    const hostedPhotoUrl = photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))
+      ? photoUrl
+      : null;
+
     const payload = {
       action: action,
       contact: {
@@ -253,8 +258,8 @@ const NewContactWizardScreen = () => {
         phone: formData.phone,
         email: formData.email,
       },
-      photoUrl: photoUrl,
-      hasPhoto: !!photoUrl,
+      photoUrl: hostedPhotoUrl,
+      hasPhoto: !!hostedPhotoUrl,
       timestamp: new Date().toISOString(),
     };
 
