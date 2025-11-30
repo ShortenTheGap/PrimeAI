@@ -70,6 +70,7 @@ const NewContactWizardScreen = () => {
   // Saving state
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Animate step transitions
   const animateTransition = (nextStep) => {
@@ -129,6 +130,49 @@ const NewContactWizardScreen = () => {
       const localUri = result.assets[0].uri;
       setPhotoUrl(localUri);
       animateTransition(STEPS.PHOTO_CONFIRM);
+    }
+  };
+
+  // Upload photo to server and get hosted URL
+  const uploadPhotoAndContinue = async () => {
+    if (!photoUrl || !photoUrl.startsWith('file://')) {
+      // No local photo to upload, just continue
+      animateTransition(STEPS.MESSAGE_PROMPT);
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+
+    try {
+      const photoFormData = new FormData();
+      photoFormData.append('photo', {
+        uri: photoUrl,
+        type: 'image/jpeg',
+        name: 'contact-photo.jpg',
+      });
+
+      const response = await apiClient.post(
+        `${API.API_URL}/api/contacts/upload-photo`,
+        photoFormData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 30000,
+        }
+      );
+
+      if (response.data && response.data.photoUrl) {
+        // Update photoUrl with hosted URL
+        setPhotoUrl(response.data.photoUrl);
+        console.log('📸 Photo uploaded, hosted URL:', response.data.photoUrl);
+      }
+
+      animateTransition(STEPS.MESSAGE_PROMPT);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      Alert.alert('Upload Error', 'Failed to upload photo. Continuing without photo URL in webhook.');
+      animateTransition(STEPS.MESSAGE_PROMPT);
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -385,13 +429,16 @@ const NewContactWizardScreen = () => {
       contactFormData.append('phone', formData.phone || '');
       contactFormData.append('email', formData.email || '');
 
-      // Add photo if exists
+      // Add photo if it's a local file, or pass hosted URL if already uploaded
       if (photoUrl && photoUrl.startsWith('file://')) {
         contactFormData.append('photo', {
           uri: photoUrl,
           type: 'image/jpeg',
           name: 'contact-photo.jpg',
         });
+      } else if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+        // Photo was already uploaded, pass the URL
+        contactFormData.append('photoUrl', photoUrl);
       }
 
       // Add recording if exists
@@ -592,14 +639,28 @@ const NewContactWizardScreen = () => {
 
             <View style={styles.buttonGroup}>
               <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => animateTransition(STEPS.MESSAGE_PROMPT)}
+                style={[styles.primaryButton, isUploadingPhoto && styles.disabledButton]}
+                onPress={uploadPhotoAndContinue}
+                disabled={isUploadingPhoto}
               >
-                <Feather name="check" size={20} color="#fff" />
-                <Text style={styles.primaryButtonText}>Confirm</Text>
+                {isUploadingPhoto ? (
+                  <>
+                    <ActivityIndicator color="#fff" size="small" />
+                    <Text style={styles.primaryButtonText}>Uploading...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Feather name="check" size={20} color="#fff" />
+                    <Text style={styles.primaryButtonText}>Confirm</Text>
+                  </>
+                )}
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.optionButton, styles.optionButtonSecondary]} onPress={takePhoto}>
+              <TouchableOpacity
+                style={[styles.optionButton, styles.optionButtonSecondary]}
+                onPress={takePhoto}
+                disabled={isUploadingPhoto}
+              >
                 <Feather name="refresh-cw" size={20} color="#fff" />
                 <Text style={styles.optionButtonText}>Take Another</Text>
               </TouchableOpacity>
@@ -610,6 +671,7 @@ const NewContactWizardScreen = () => {
                   setPhotoUrl(null);
                   animateTransition(STEPS.MESSAGE_PROMPT);
                 }}
+                disabled={isUploadingPhoto}
               >
                 <Text style={styles.skipButtonText}>Skip Photo</Text>
                 <Feather name="chevron-right" size={20} color="#94a3b8" />
@@ -900,6 +962,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     gap: 8,
     marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
   primaryButtonText: {
     color: '#fff',

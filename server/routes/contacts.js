@@ -259,6 +259,32 @@ router.get('/:id', authenticateUser, async (req, res) => {
   }
 });
 
+// POST upload photo only (returns hosted URL for use before contact is saved)
+router.post('/upload-photo', authenticateUser, upload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No photo file provided' });
+    }
+
+    // Get the backend URL for constructing the full photo URL
+    const backendUrl = process.env.BACKEND_URL || process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : 'http://localhost:5000';
+
+    const photoUrl = `${backendUrl}/uploads/photos/${req.file.filename}`;
+
+    console.log('📸 Photo uploaded:', req.file.filename, '→', photoUrl);
+
+    res.json({
+      photoUrl,
+      filename: req.file.filename
+    });
+  } catch (error) {
+    console.error('Error uploading photo:', error);
+    res.status(500).json({ error: 'Failed to upload photo' });
+  }
+});
+
 // POST new contact (with authentication)
 router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'photo', maxCount: 1 }]), async (req, res) => {
   try {
