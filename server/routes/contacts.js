@@ -168,9 +168,9 @@ const sendNoteToN8N = async (contactData, transcript, photoUrl = null, contactId
       console.log('📸 Converting photo URL for webhook:', photoUrl, '→', fullPhotoUrl);
     }
 
-    // Build payload with typed note instead of audio
+    // Build payload with typed note (same format as audio webhook for consistency)
     const payload = {
-      action: 'note',  // Indicates this is a typed note, not a voice recording
+      action: 'update',  // Same action as audio webhook - pick fields you need in N8N
       contact_id: contactId,
       user_id: userId,
       contact: {
@@ -179,6 +179,7 @@ const sendNoteToN8N = async (contactData, transcript, photoUrl = null, contactId
         email: contactData.email || null,
       },
       transcript: transcript,  // The typed note content
+      audio_base64: null,  // No audio for typed notes
       hasRecording: false,  // No audio recording
       photoUrl: fullPhotoUrl || null,
       hasPhoto: !!fullPhotoUrl,
@@ -210,7 +211,7 @@ const sendNoteToN8N = async (contactData, transcript, photoUrl = null, contactId
 };
 
 // Send audio to N8N for transcription (OPTIONAL - for power users with custom integrations)
-const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = null, userId = null) => {
+const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = null, userId = null, transcript = null) => {
   try {
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
@@ -249,6 +250,7 @@ const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = nu
         phone: contactData.phone || null,
         email: contactData.email || null,
       },
+      transcript: transcript,  // Include transcript if already transcribed by OpenAI
       audio_base64: audioBase64,
       hasRecording: true,
       photoUrl: fullPhotoUrl || null,
@@ -430,7 +432,7 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
       if (n8nWebhookUrl) {
         webhook_status = 'sent';
         console.log('📤 Sending complete contact data to N8N webhook (optional power user feature)...');
-        sendToN8N(audioPath, { name, phone, email }, photo_url, newContact.contact_id, req.userId).catch(err => {
+        sendToN8N(audioPath, { name, phone, email }, photo_url, newContact.contact_id, req.userId, transcribedText).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {
@@ -559,7 +561,7 @@ router.put('/:id', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1
       if (n8nWebhookUrl) {
         webhook_status = 'sent';
         console.log('📤 Sending complete contact data to N8N webhook (optional power user feature)...');
-        sendToN8N(audioPath, { name, phone, email }, photo_url, contactId, req.userId).catch(err => {
+        sendToN8N(audioPath, { name, phone, email }, photo_url, contactId, req.userId, newTranscript).catch(err => {
           console.error('❌ N8N processing error:', err);
         });
       } else {
