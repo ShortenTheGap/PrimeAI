@@ -1016,6 +1016,14 @@ const ContactCaptureScreen = () => {
           }
         }
 
+        // Add transcript/note if it exists and there's no new audio being uploaded
+        // (new audio will get its own transcript from transcription service)
+        const isUploadingNewAudio = uriToUse && typeof uriToUse === 'string' && uriToUse.startsWith('file://');
+        if (transcript && transcript.trim() && !isUploadingNewAudio) {
+          console.log('📝 Adding transcript/note to save');
+          contactFormData.append('transcript', transcript.trim());
+        }
+
         console.log(`${mode === 'edit' ? 'Updating' : 'Creating'} contact in cloud (${API.ENV_NAME})...`);
 
         let response;
@@ -1633,16 +1641,26 @@ const ContactCaptureScreen = () => {
             <Text style={styles.recordingStatusText}>Recording saved</Text>
           </View>
         )}
+      </View>
 
-        {transcript && (
-          <View style={styles.transcriptSection}>
-            <View style={styles.transcriptLabelRow}>
-              <Feather name="file-text" size={14} color="#94a3b8" />
-              <Text style={styles.transcriptLabel}>Transcript:</Text>
-            </View>
-            <Text style={styles.transcriptText}>{transcript}</Text>
-          </View>
-        )}
+      {/* Context Note / Transcript Section */}
+      <View style={styles.noteSection}>
+        <View style={styles.sectionTitleRow}>
+          <Feather name="edit-3" size={18} color="#f1f5f9" />
+          <Text style={styles.sectionTitle}>
+            {hasRecording ? 'Transcript' : 'Context Note'}
+          </Text>
+        </View>
+        <TextInput
+          style={styles.noteInput}
+          placeholder={hasRecording ? "Transcript will appear here after recording..." : "Add notes about this contact..."}
+          placeholderTextColor="#64748b"
+          value={transcript || ''}
+          onChangeText={setTranscript}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
       </View>
 
       {/* Photo Capture Section */}
@@ -1899,6 +1917,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#cbd5e1',
     lineHeight: 20,
+  },
+  noteSection: {
+    padding: 20,
+    backgroundColor: '#1e293b',
+    margin: 16,
+    marginTop: 0,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  noteInput: {
+    fontSize: 16,
+    color: '#f1f5f9',
+    padding: 16,
+    backgroundColor: '#334155',
+    borderRadius: 12,
+    minHeight: 100,
+    marginTop: 12,
   },
   photoSection: {
     padding: 20,

@@ -145,6 +145,70 @@ const transcribeAudio = async (audioPath) => {
   }
 };
 
+// Send typed note to N8N webhook (OPTIONAL - for power users with custom integrations)
+// Used when there's a typed note but no audio recording
+const sendNoteToN8N = async (contactData, transcript, photoUrl = null, contactId = null, userId = null) => {
+  try {
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+
+    if (!n8nWebhookUrl) {
+      console.log('⚠️ N8N webhook URL not configured, skipping note webhook');
+      return null;
+    }
+
+    // Get backend URL from environment or construct it
+    const backendUrl = process.env.BACKEND_URL || process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : 'http://localhost:3000';
+
+    // Convert relative photo URL to absolute URL for SMS messages
+    let fullPhotoUrl = photoUrl;
+    if (photoUrl && photoUrl.startsWith('/uploads/')) {
+      fullPhotoUrl = `${backendUrl}${photoUrl}`;
+      console.log('📸 Converting photo URL for webhook:', photoUrl, '→', fullPhotoUrl);
+    }
+
+    // Build payload with typed note instead of audio
+    const payload = {
+      action: 'note',  // Indicates this is a typed note, not a voice recording
+      contact_id: contactId,
+      user_id: userId,
+      contact: {
+        name: contactData.name,
+        phone: contactData.phone || null,
+        email: contactData.email || null,
+      },
+      transcript: transcript,  // The typed note content
+      hasRecording: false,  // No audio recording
+      photoUrl: fullPhotoUrl || null,
+      hasPhoto: !!fullPhotoUrl,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log('📤 Sending typed note to N8N:', {
+      action: payload.action,
+      contact_id: contactId,
+      user_id: userId,
+      contact: payload.contact.name,
+      hasTranscript: !!transcript,
+      transcriptPreview: transcript?.substring(0, 50) + '...',
+      hasPhoto: !!photoUrl,
+    });
+
+    const response = await axios.post(n8nWebhookUrl, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 30000, // 30 second timeout
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error sending note to N8N:', error.message);
+    return null;
+  }
+};
+
 // Send audio to N8N for transcription (OPTIONAL - for power users with custom integrations)
 const sendToN8N = async (audioPath, contactData, photoUrl = null, contactId = null, userId = null) => {
   try {
@@ -288,12 +352,13 @@ router.post('/upload-photo', authenticateUser, upload.single('photo'), async (re
 // POST new contact (with authentication)
 router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'photo', maxCount: 1 }]), async (req, res) => {
   try {
-    const { name, phone, email, photoUrl } = req.body;
+    const { name, phone, email, photoUrl, transcript: typedNote } = req.body;
 
     // Debug: Log what files were received
     console.log('📥 POST /api/contacts - Files received:', {
       hasAudioFile: !!(req.files && req.files.audio),
       hasPhotoFile: !!(req.files && req.files.photo),
+      hasTypedNote: !!typedNote,
       audioCount: req.files && req.files.audio ? req.files.audio.length : 0,
       photoCount: req.files && req.files.photo ? req.files.photo.length : 0,
       allFiles: req.files ? Object.keys(req.files) : [],
@@ -306,12 +371,14 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
     let recording_uri = null;
     let has_recording = false;
     let photo_url = photoUrl || null;
+    let transcript = typedNote || null; // Use typed note if provided
 
     // Handle audio file if uploaded
     if (req.files && req.files.audio && req.files.audio[0]) {
       const audioFile = req.files.audio[0];
       recording_uri = `/uploads/audio/${audioFile.filename}`;
       has_recording = true;
+      transcript = null; // Will be set by transcription
       console.log('📁 Audio file uploaded:', audioFile.filename);
     }
 
@@ -330,7 +397,7 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
       photo_url,
       recording_uri,
       has_recording,
-      transcript: null,
+      transcript,
       analysis: null
     };
 
@@ -338,7 +405,7 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
     console.log('✅ Contact created:', newContact.contact_id, 'for user:', req.userId);
 
     let webhook_status = 'not_sent';
-    let transcript = null;
+    let finalTranscript = transcript; // Preserve the typed note if no audio
 
     // Transcribe audio immediately if uploaded
     if (req.files && req.files.audio && req.files.audio[0]) {
@@ -346,13 +413,14 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
       const audioPath = path.join(__dirname, '../../uploads/audio', audioFile.filename);
 
       // Step 1: Automatic transcription with OpenAI (always, if configured)
-      transcript = await transcribeAudio(audioPath);
+      const transcribedText = await transcribeAudio(audioPath);
 
-      if (transcript) {
+      if (transcribedText) {
+        finalTranscript = transcribedText;
         // Update contact with transcript immediately
         await db.updateContact(newContact.contact_id, {
           ...newContact,
-          transcript,
+          transcript: transcribedText,
         }, req.userId);
         console.log('💾 Transcript saved to database');
       }
@@ -369,11 +437,24 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
         webhook_status = 'not_configured';
         console.log('ℹ️ N8N_WEBHOOK_URL not configured - skipping optional webhook');
       }
+    } else if (transcript && transcript.trim()) {
+      // No audio, but there's a typed note - send to N8N webhook
+      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+      if (n8nWebhookUrl) {
+        webhook_status = 'sent';
+        console.log('📤 Sending typed note to N8N webhook (no audio)...');
+        sendNoteToN8N({ name, phone, email }, transcript, photo_url, newContact.contact_id, req.userId).catch(err => {
+          console.error('❌ N8N note webhook error:', err);
+        });
+      } else {
+        webhook_status = 'not_configured';
+        console.log('ℹ️ N8N_WEBHOOK_URL not configured - skipping typed note webhook');
+      }
     }
 
     res.status(201).json({
       ...newContact,
-      transcript, // Include transcript in response
+      transcript: finalTranscript, // Include transcript in response
       photo_url: newContact.photo_url || photo_url, // Explicitly include photo_url
       has_recording
     });
@@ -386,7 +467,7 @@ router.post('/', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }
 // PUT update contact (with authentication)
 router.put('/:id', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1 }, { name: 'photo', maxCount: 1 }]), async (req, res) => {
   try {
-    const { name, phone, email, photoUrl } = req.body;
+    const { name, phone, email, photoUrl, transcript: typedTranscript } = req.body;
     const contactId = req.params.id;
 
     console.log('🔄 PUT /api/contacts/' + contactId, {
@@ -403,6 +484,7 @@ router.put('/:id', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1
       phone,
       email,
       photoUrl,
+      typedTranscript: typedTranscript ? typedTranscript.substring(0, 50) + '...' : null,
       phoneType: typeof phone,
       emailType: typeof email,
       phoneUndefined: phone === undefined,
@@ -486,6 +568,43 @@ router.put('/:id', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1
       }
     }
 
+    // Determine transcript to use:
+    // 1. If new audio was uploaded, use the transcription from that
+    // 2. If a typed transcript was sent in request body, use that
+    // 3. Otherwise keep existing transcript
+    let finalTranscript = existingContact.transcript;
+    let typedNoteChanged = false;
+    if (newTranscript) {
+      finalTranscript = newTranscript; // Transcription from new audio takes priority
+    } else if (typedTranscript !== undefined && typedTranscript !== null) {
+      const trimmedTranscript = typedTranscript.trim() || null;
+      // Check if the note actually changed
+      if (trimmedTranscript !== existingContact.transcript) {
+        typedNoteChanged = true;
+        console.log('📝 Note changed - old:', existingContact.transcript?.substring(0, 30), '→ new:', trimmedTranscript?.substring(0, 30));
+      }
+      finalTranscript = trimmedTranscript; // User edited the transcript/note
+      console.log('📝 Using typed transcript from request:', finalTranscript?.substring(0, 50) + '...');
+    }
+
+    // Send webhook for typed note changes (when no new audio was uploaded)
+    if (typedNoteChanged && finalTranscript && !newTranscript) {
+      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+      if (n8nWebhookUrl) {
+        webhook_status = 'sent';
+        console.log('📤 Sending updated typed note to N8N webhook...');
+        sendNoteToN8N(
+          { name: name || existingContact.name, phone: phone || existingContact.phone, email: email || existingContact.email },
+          finalTranscript,
+          photo_url,
+          contactId,
+          req.userId
+        ).catch(err => {
+          console.error('❌ N8N note webhook error:', err);
+        });
+      }
+    }
+
     const contactData = {
       name: name || existingContact.name,
       phone: phone !== undefined ? phone : existingContact.phone,
@@ -493,7 +612,7 @@ router.put('/:id', authenticateUser, upload.fields([{ name: 'audio', maxCount: 1
       photo_url,
       recording_uri,
       has_recording,
-      transcript: newTranscript || existingContact.transcript, // Use new transcript if available
+      transcript: finalTranscript,
       analysis: existingContact.analysis
     };
 

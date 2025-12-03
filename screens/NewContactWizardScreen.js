@@ -37,7 +37,8 @@ const STEPS = {
   MESSAGE_PROMPT: 4,
   CALENDAR_PROMPT: 5,
   VOICE_PROMPT: 6,
-  SAVING: 7,
+  CONTEXT_NOTE: 7,
+  SAVING: 8,
 };
 
 const NewContactWizardScreen = () => {
@@ -66,6 +67,9 @@ const NewContactWizardScreen = () => {
   const [recording, setRecording] = useState(null);
   const [recordingUri, setRecordingUri] = useState(null);
   const [hasRecording, setHasRecording] = useState(false);
+
+  // Context note state (alternative to voice note)
+  const [contextNote, setContextNote] = useState('');
 
   // Saving state
   const [isSaving, setIsSaving] = useState(false);
@@ -450,6 +454,9 @@ const NewContactWizardScreen = () => {
           type: `audio/${fileType}`,
           name: `voice-note.${fileType}`,
         });
+      } else if (contextNote && contextNote.trim()) {
+        // If no recording but has a typed note, send it as transcript
+        contactFormData.append('transcript', contextNote.trim());
       }
 
       const response = await apiClient.post(
@@ -504,8 +511,19 @@ const NewContactWizardScreen = () => {
     }
   };
 
-  // Skip to save (from voice step)
-  const skipAndSave = () => {
+  // Skip voice recording - go to context note step
+  const skipVoiceNote = () => {
+    animateTransition(STEPS.CONTEXT_NOTE);
+  };
+
+  // Save with optional context note
+  const saveWithNote = () => {
+    saveContact();
+  };
+
+  // Skip note and save directly
+  const skipNoteAndSave = () => {
+    setContextNote('');
     saveContact();
   };
 
@@ -781,12 +799,52 @@ const NewContactWizardScreen = () => {
                     <Text style={styles.recordButtonText}>Press to Record</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.skipButton} onPress={skipAndSave}>
-                    <Text style={styles.skipButtonText}>Skip & Save Contact</Text>
+                  <TouchableOpacity style={styles.skipButton} onPress={skipVoiceNote}>
+                    <Text style={styles.skipButtonText}>Skip Voice Note</Text>
                     <Feather name="chevron-right" size={20} color="#94a3b8" />
                   </TouchableOpacity>
                 </>
               )}
+            </View>
+          </View>
+        );
+
+      case STEPS.CONTEXT_NOTE:
+        return (
+          <View style={styles.stepCard}>
+            <View style={styles.stepHeader}>
+              <Feather name="edit-3" size={32} color="#3b82f6" />
+              <Text style={styles.stepTitle}>Add a Note?</Text>
+              <Text style={styles.stepSubtitle}>
+                Type any context about this contact
+              </Text>
+            </View>
+
+            <TextInput
+              style={styles.noteInput}
+              placeholder="e.g., Met at tech conference, interested in partnership..."
+              placeholderTextColor="#64748b"
+              value={contextNote}
+              onChangeText={setContextNote}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                style={[styles.primaryButton, !contextNote.trim() && styles.disabledButton]}
+                onPress={saveWithNote}
+                disabled={!contextNote.trim()}
+              >
+                <Feather name="check" size={20} color="#fff" />
+                <Text style={styles.primaryButtonText}>Save with Note</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.skipButton} onPress={skipNoteAndSave}>
+                <Text style={styles.skipButtonText}>Skip & Save Contact</Text>
+                <Feather name="chevron-right" size={20} color="#94a3b8" />
+              </TouchableOpacity>
             </View>
           </View>
         );
@@ -949,6 +1007,15 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#334155',
     borderRadius: 12,
+  },
+  noteInput: {
+    fontSize: 16,
+    color: '#f1f5f9',
+    padding: 16,
+    backgroundColor: '#334155',
+    borderRadius: 12,
+    minHeight: 120,
+    marginBottom: 20,
   },
   buttonGroup: {
     gap: 12,
