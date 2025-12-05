@@ -15,6 +15,7 @@ import { Feather } from '@expo/vector-icons';
 import ContactMonitorService from '../services/ContactMonitorService';
 import BackgroundTaskService from '../services/BackgroundTaskService';
 import userService from '../services/UserService';
+import apiClient from '../services/ApiService';
 import API from '../config/api';
 
 // Collapsible Card Component
@@ -164,6 +165,62 @@ const SettingsScreen = () => {
             if (global.handleLogout) {
               await global.handleLogout();
             }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account? This will remove all your contacts, voice notes, and data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation for safety
+            Alert.alert(
+              'Final Confirmation',
+              'Type DELETE to confirm you want to permanently delete your account and all data.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'I Understand, Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      const response = await apiClient.delete(`${API.API_URL}/api/auth/account`);
+
+                      Alert.alert(
+                        'Account Deleted',
+                        'Your account and all data have been permanently deleted.',
+                        [
+                          {
+                            text: 'OK',
+                            onPress: async () => {
+                              // Clear local storage and logout
+                              await AsyncStorage.clear();
+                              if (global.handleLogout) {
+                                await global.handleLogout();
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    } catch (error) {
+                      console.error('Error deleting account:', error);
+                      Alert.alert(
+                        'Error',
+                        error.response?.data?.error || 'Failed to delete account. Please try again.'
+                      );
+                    }
+                  },
+                },
+              ]
+            );
           },
         },
       ]
@@ -535,6 +592,14 @@ const SettingsScreen = () => {
             <Feather name="log-out" size={20} color="#ef4444" />
             <Text style={styles.logoutButtonText}>Logout</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
+            <Feather name="trash-2" size={20} color="#dc2626" />
+            <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
+          </TouchableOpacity>
+          <Text style={styles.deleteAccountWarning}>
+            Permanently removes your account and all data
+          </Text>
         </CollapsibleCard>
       )}
 
@@ -636,6 +701,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+    borderWidth: 1,
+    borderColor: '#dc2626',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  deleteAccountButtonText: {
+    color: '#dc2626',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  deleteAccountWarning: {
+    color: '#94a3b8',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   settingRow: {
     flexDirection: 'row',

@@ -102,6 +102,48 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Delete account endpoint - permanently removes user and all their data
+router.delete('/account', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    // Verify user exists
+    const user = await db.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Delete all user's contacts first (if cascade doesn't handle it)
+    const contacts = await db.getAllContacts(userId);
+    for (const contact of contacts) {
+      await db.deleteContact(contact.contact_id, userId);
+    }
+
+    // Delete the user account
+    await db.deleteUser(userId);
+
+    console.log(`✅ Account deleted: ${user.email} (${userId})`);
+
+    res.json({
+      message: 'Account deleted successfully',
+      deletedContacts: contacts.length
+    });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    console.error('Account deletion error:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 // Verify token endpoint (optional, for checking if token is still valid)
 router.get('/verify', async (req, res) => {
   try {

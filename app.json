@@ -19,12 +19,6 @@
         "NSMicrophoneUsageDescription": "We need microphone access to record voice notes.",
         "NSLocationWhenInUseUsageDescription": "We use your location to remember where you met contacts.",
         "NSCalendarsUsageDescription": "We need access to your calendar to create follow-up events for new contacts.",
-        "UIBackgroundModes": [
-          "audio",
-          "fetch",
-          "audio",
-          "fetch"
-        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
