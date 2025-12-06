@@ -162,12 +162,14 @@ const ContactCaptureScreen = () => {
         email: rawContact.email || '',
         recordingUri: rawContact.recording_uri || rawContact.recordingUri || null,
         photoUrl: originalPhotoUrl,
+        transcript: rawContact.transcript || null,
       });
       console.log('📝 Stored original data for edit mode:', {
         name: rawContact.name,
         phone: rawContact.phone,
         email: rawContact.email,
         photoUrl: originalPhotoUrl,
+        transcript: rawContact.transcript ? rawContact.transcript.substring(0, 30) + '...' : null,
       });
     } else {
       setOriginalData(null);
@@ -206,8 +208,9 @@ const ContactCaptureScreen = () => {
       const emailChanged = formData.email !== originalData.email;
       const recordingChanged = recordingUri !== originalData.recordingUri;
       const photoChanged = photoUrl !== originalData.photoUrl;
+      const transcriptChanged = (transcript || null) !== (originalData.transcript || null);
 
-      const hasChanges = nameChanged || phoneChanged || emailChanged || recordingChanged || photoChanged;
+      const hasChanges = nameChanged || phoneChanged || emailChanged || recordingChanged || photoChanged || transcriptChanged;
 
       console.log('🔍 Unsaved changes check (edit mode):', {
         mode,
@@ -216,6 +219,7 @@ const ContactCaptureScreen = () => {
         emailChanged,
         recordingChanged,
         photoChanged,
+        transcriptChanged,
         hasChanges,
         current: { name: formData.name, phone: formData.phone, email: formData.email, photoUrl },
         original: { name: originalData.name, phone: originalData.phone, email: originalData.email, photoUrl: originalData.photoUrl },
@@ -234,7 +238,7 @@ const ContactCaptureScreen = () => {
         setHasUnsavedChanges(false);
       }
     }
-  }, [formData.name, formData.phone, formData.email, recordingUri, photoUrl, originalData, savedSuccessfully]);
+  }, [formData.name, formData.phone, formData.email, recordingUri, photoUrl, transcript, originalData, savedSuccessfully]);
 
   // Update global flag when unsaved changes state changes
   useEffect(() => {
