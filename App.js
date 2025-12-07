@@ -12,6 +12,7 @@ import SettingsScreen from './screens/SettingsScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignupScreen from './screens/SignupScreen';
 import NewContactWizardScreen from './screens/NewContactWizardScreen';
+import PrivacyConsentScreen, { checkPrivacyConsent } from './screens/PrivacyConsentScreen';
 
 // Import services
 import ContactMonitorService from './services/ContactMonitorService';
@@ -26,6 +27,7 @@ const App = () => {
   const navigationRef = React.useRef(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasPrivacyConsent, setHasPrivacyConsent] = useState(false);
 
   // Global flag to track unsaved changes in ContactCapture
   global.hasUnsavedContactChanges = false;
@@ -79,6 +81,11 @@ const App = () => {
           console.log('✅ User authenticated with JWT:', storedUser.email);
           setIsAuthenticated(true);
 
+          // Check if privacy consent has been given
+          const consentGiven = await checkPrivacyConsent();
+          setHasPrivacyConsent(consentGiven);
+          console.log('📋 Privacy consent status:', consentGiven ? 'Given' : 'Required');
+
           // Always set navigation callback first
           ContactMonitorService.setNavigationCallback((contactData) => {
             console.log('🔄 Auto-navigating to New Contact Wizard with:', contactData.name);
@@ -130,6 +137,11 @@ const App = () => {
     await userService.login(token, user);
     setIsAuthenticated(true);
 
+    // Check if privacy consent has been given
+    const consentGiven = await checkPrivacyConsent();
+    setHasPrivacyConsent(consentGiven);
+    console.log('📋 Privacy consent after login:', consentGiven ? 'Given' : 'Required');
+
     // Set navigation callback
     ContactMonitorService.setNavigationCallback((contactData) => {
       navigationRef.current?.navigate('NewContactWizard', {
@@ -158,6 +170,13 @@ const App = () => {
   const handleLogout = async () => {
     await userService.logout();
     setIsAuthenticated(false);
+    setHasPrivacyConsent(false);
+  };
+
+  // Handle privacy consent given
+  const handlePrivacyConsentGiven = () => {
+    console.log('✅ Privacy consent given by user');
+    setHasPrivacyConsent(true);
   };
 
   // Make handlers globally accessible
@@ -324,9 +343,22 @@ const App = () => {
     );
   }
 
+  // Determine what to render based on auth and consent state
+  const renderContent = () => {
+    if (!isAuthenticated) {
+      return <AuthStack />;
+    }
+
+    if (!hasPrivacyConsent) {
+      return <PrivacyConsentScreen onConsentGiven={handlePrivacyConsentGiven} />;
+    }
+
+    return <MainApp />;
+  };
+
   return (
     <NavigationContainer ref={navigationRef}>
-      {isAuthenticated ? <MainApp /> : <AuthStack />}
+      {renderContent()}
     </NavigationContainer>
   );
 };

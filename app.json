@@ -13,9 +13,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourname.contextcrm",
-      "buildNumber": "36",
+      "buildNumber": "37",
       "infoPlist": {
-        "NSContactsUsageDescription": "We need access to your contacts to notify you when you add someone new.",
+        "NSContactsUsageDescription": "This app stores contact information you provide on our secure cloud servers to sync across your devices and enable features like voice notes and follow-up reminders. Your contact data is encrypted and never shared with third parties.",
         "NSMicrophoneUsageDescription": "We need microphone access to record voice notes.",
         "NSLocationWhenInUseUsageDescription": "We use your location to remember where you met contacts.",
         "NSCalendarsUsageDescription": "We need access to your calendar to create follow-up events for new contacts.",
