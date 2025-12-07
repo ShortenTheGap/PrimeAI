@@ -147,18 +147,20 @@ router.delete('/account', async (req, res) => {
 
 // Webhook endpoint to create users from external CRM
 // POST /api/auth/webhook/create-user
-// Headers: x-api-key: <WEBHOOK_API_KEY>
+// Headers: Authorization: Bearer <WEBHOOK_API_KEY>
 // Body: { email, name, password, groupId }
 router.post('/webhook/create-user', async (req, res) => {
   try {
-    // Verify API key
-    const apiKey = req.headers['x-api-key'];
+    // Verify Bearer token
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
     if (!WEBHOOK_API_KEY) {
       console.error('❌ WEBHOOK_API_KEY not configured');
       return res.status(500).json({ error: 'Webhook not configured' });
     }
-    if (apiKey !== WEBHOOK_API_KEY) {
-      console.error('❌ Invalid API key for webhook');
+    if (!token || token !== WEBHOOK_API_KEY) {
+      console.error('❌ Invalid or missing Bearer token for webhook');
       return res.status(401).json({ error: 'Invalid API key' });
     }
 
