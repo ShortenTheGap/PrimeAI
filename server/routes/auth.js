@@ -7,6 +7,7 @@ const router = express.Router();
 
 // JWT secret - in production, this should be in environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+const WEBHOOK_API_KEY = process.env.WEBHOOK_API_KEY; // Required for webhook endpoints
 const SALT_ROUNDS = 10;
 
 // Helper to generate JWT token
@@ -141,6 +142,78 @@ router.delete('/account', async (req, res) => {
     }
     console.error('Account deletion error:', error);
     res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
+// Webhook endpoint to create users from external CRM
+// POST /api/auth/webhook/create-user
+// Headers: x-api-key: <WEBHOOK_API_KEY>
+// Body: { email, name, password, groupId }
+router.post('/webhook/create-user', async (req, res) => {
+  try {
+    // Verify API key
+    const apiKey = req.headers['x-api-key'];
+    if (!WEBHOOK_API_KEY) {
+      console.error('❌ WEBHOOK_API_KEY not configured');
+      return res.status(500).json({ error: 'Webhook not configured' });
+    }
+    if (apiKey !== WEBHOOK_API_KEY) {
+      console.error('❌ Invalid API key for webhook');
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+
+    const { email, name, password, groupId } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Check if user already exists
+    const existingUser = await db.getUserByEmail(email.toLowerCase());
+    if (existingUser) {
+      console.log(`ℹ️ User already exists: ${email}`);
+      return res.status(200).json({
+        message: 'User already exists',
+        user: {
+          userId: existingUser.user_id,
+          email: existingUser.email
+        },
+        created: false
+      });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    // Create user
+    const user = await db.createUserWithPassword(email.toLowerCase(), passwordHash);
+
+    console.log(`✅ User created via webhook: ${email} (${user.user_id})${groupId ? ` groupId: ${groupId}` : ''}`);
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        userId: user.user_id,
+        email: user.email,
+        name: name || null,
+        groupId: groupId || null
+      },
+      created: true
+    });
+  } catch (error) {
+    console.error('Webhook create user error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
