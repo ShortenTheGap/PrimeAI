@@ -69,13 +69,16 @@ app.post('/api/users/register', async (req, res) => {
   }
 });
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
+// Health check — actually probes the database (SELECT 1) so the reported status
+// reflects real DB reachability, not a stale flag. Returns 503 when the DB is
+// down so clients/monitors can distinguish "server up, DB degraded" from healthy.
+app.get('/api/health', async (req, res) => {
+  const dbOk = await db.checkConnection();
+  res.status(dbOk ? 200 : 503).json({
+    status: dbOk ? 'ok' : 'degraded',
     message: 'PrimeAI Backend is running',
     environment: process.env.NODE_ENV || 'development',
-    database: db.isConnected ? 'connected' : 'disconnected',
+    database: dbOk ? 'connected' : 'disconnected',
     multiUser: true
   });
 });
@@ -103,6 +106,17 @@ app.use((err, req, res, next) => {
     error: err.message || 'Internal server error',
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
+});
+
+// Last-resort safety net: keep the process alive on stray async errors instead of
+// letting them crash the container (which caused the intermittent outages). These
+// should rarely fire now that the pool has its own 'error' handler — if they do,
+// the log tells us what leaked so it can be fixed properly.
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ Unhandled promise rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught exception (server kept alive):', err);
 });
 
 // Start server
