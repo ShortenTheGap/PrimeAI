@@ -6,14 +6,46 @@ const usePostgres = !!process.env.DATABASE_URL;
 
 let db;
 let isConnected = false;
+// Live DB reachability check. Overridden with a real probe in the Postgres branch;
+// SQLite is always local/available once initialized.
+let checkConnection = async () => isConnected;
 
 if (usePostgres) {
   // Use PostgreSQL for production (Railway)
   const { Pool } = require('pg');
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    // Resilience: keep sockets alive and cap the pool so Supabase idle-drops and
+    // connection limits don't silently kill us.
+    max: 10,
+    keepAlive: true,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000
   });
+
+  // CRITICAL: an unhandled 'error' event on the Pool crashes the Node process.
+  // Supabase closes idle connections (idle timeout / maintenance / network blip);
+  // without this handler the container crashes and Railway restarts it, which is
+  // exactly the intermittent "server is down" the app was showing. The pool
+  // transparently reconnects on the next query, so we just log and mark degraded.
+  pool.on('error', (err) => {
+    console.error('❌ Unexpected PostgreSQL pool error (idle client dropped):', err.message);
+    isConnected = false;
+  });
+
+  // Real health probe — actually asks the database if it's reachable, instead of
+  // trusting a boolean snapshot that could be stale.
+  checkConnection = async () => {
+    try {
+      await pool.query('SELECT 1');
+      isConnected = true;
+    } catch (err) {
+      console.error('❌ PostgreSQL health check failed:', err.message);
+      isConnected = false;
+    }
+    return isConnected;
+  };
 
   // Initialize PostgreSQL schema
   const initPostgres = async () => {
@@ -230,6 +262,10 @@ if (usePostgres) {
     } catch (error) {
       console.error('❌ PostgreSQL initialization error:', error);
       isConnected = false;
+      // Transient failure at boot (Supabase waking up, brief network blip) should
+      // not leave the server permanently "disconnected". Retry with backoff.
+      console.log('⏳ Retrying PostgreSQL initialization in 5s...');
+      setTimeout(initPostgres, 5000);
     }
   };
 
@@ -667,4 +703,11 @@ if (usePostgres) {
   };
 }
 
-module.exports = { ...db, isConnected };
+module.exports = {
+  ...db,
+  // Live getter — reflects the CURRENT connection state, not a boolean snapshot
+  // captured at module-load time (the old `{ ...db, isConnected }` bug meant this
+  // was frozen at `false` forever, so /api/health always reported "disconnected").
+  get isConnected() { return isConnected; },
+  checkConnection
+};
